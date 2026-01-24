@@ -15,7 +15,8 @@ const ProductDetailPage = () => {
 
     useEffect(() => {
         productApi.getProductDetail(id).then(res => {
-            setProduct(res.data);
+            // apiClient returns the DTO directly
+            setProduct(res);
             setLoading(false);
         }).catch(err => {
             console.error(err);

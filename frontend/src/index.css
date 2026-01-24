@@ -5,21 +5,21 @@
   --bg-primary: #121212;
   --bg-secondary: #1E1E1E;
   --bg-tertiary: #2C2C2C;
-
+  
   --text-primary: #E0E0E0;
   --text-secondary: #AAAAAA;
   --text-muted: #666666;
-
+  
   --accent-primary: #00E5FF; /* Cyber Cyan */
   --accent-secondary: #FF4081; /* Neon Pink */
   --accent-hover: #00B8CC;
-
+  
   --border-subtle: #333333;
   --border-accent: rgba(0, 229, 255, 0.3);
-
+  
   --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-glow: 0 0 15px rgba(0, 229, 255, 0.2);
-
+  
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -119,29 +119,29 @@ h3 { font-size: 1.5rem; }
 }
 
 .grid-cols-3 {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
 }
 
 /* Header */
 .app-header {
-  height: 70px;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  background: rgba(18, 18, 18, 0.8);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+    height: 70px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    background: rgba(18, 18, 18, 0.8);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .nav-link {
-  margin-left: 24px;
-  font-weight: 500;
-  font-size: 0.95rem;
+    margin-left: 24px;
+    font-weight: 500;
+    font-size: 0.95rem;
 }
 .nav-link.active {
-  color: var(--accent-primary);
+    color: var(--accent-primary);
 }

@@ -7,30 +7,40 @@ import ProductItem from './components/ProductItem';
 
 const ProductPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const category = searchParams.get('category') || 'ALL';
+    // 백엔드는 category 파라미터가 필수이며 Enum (KEYBOARD, SWITCH 등)만 받음. ALL 지원 안 함.
+    const category = searchParams.get('category') || 'KEYBOARD';
     const keyword = searchParams.get('keyword');
 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    useEffect(() => {
+    const fetchProducts = () => {
         setLoading(true);
-        const fetchMethod = keyword
-            ? productApi.searchProducts(keyword)
-            : productApi.getProducts(category);
+        setError(null);
+        const fetchMethod = (category === 'ALL' && !keyword)
+            ? productApi.getProducts('KEYBOARD')
+            : (keyword ? productApi.searchProducts(keyword) : productApi.getProducts(category));
 
         fetchMethod.then(res => {
-            setProducts(res.data.content || res.data); // Search endpoint might return list directly or page
+            // searchProducts returns List<ProductListResponse> (array)
+            // getProducts returns Page<ProductListResponse> (object with content array)
+            const content = Array.isArray(res) ? res : (res.content || []); 
+            setProducts(content);
             setLoading(false);
         }).catch(err => {
             console.error(err);
+            setError(err);
             setLoading(false);
         });
+    };
+
+    useEffect(() => {
+        fetchProducts();
     }, [category, keyword]);
 
     const handleCategoryChange = (catId) => {
-        if (catId === 'ALL') setSearchParams({});
-        else setSearchParams({ category: catId });
+        setSearchParams({ category: catId });
     };
 
     return (
@@ -52,6 +62,11 @@ const ProductPage = () => {
 
                 {loading ? (
                     <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>로딩 중...</div>
+                ) : error ? (
+                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-danger)' }}>
+                        <p>상품을 불러오는 중 오류가 발생했습니다.</p>
+                        <button onClick={fetchProducts} className="btn btn-primary" style={{ marginTop: '10px' }}>다시 시도</button>
+                    </div>
                 ) : (
                     <div className="grid-cols-3">
                         {products.map(product => (
@@ -62,6 +77,7 @@ const ProductPage = () => {
             </main>
         </div>
     );
+
 };
 
 export default ProductPage;
