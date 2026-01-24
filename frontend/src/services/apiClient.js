@@ -1,7 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://15.164.161.36';
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://15.164.161.36';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // 'http://localhost:8080';
 // 'http://15.164.161.36';
+// http://15.164.161.36/swagger-ui/index.html
 
 
 class ApiClient {
@@ -43,7 +46,20 @@ class ApiClient {
     }
 
     async request(endpoint, options = {}, isCritical = false) {
-        const url = `${this.baseURL}${endpoint}`;
+        let url = `${this.baseURL}${endpoint}`;
+
+        if (options.params) {
+            const params = new URLSearchParams();
+            Object.entries(options.params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    params.append(key, value);
+                }
+            });
+            const queryString = params.toString();
+            if (queryString) {
+                url += `?${queryString}`;
+            }
+        }
         const isFormData = options.body instanceof FormData;
 
         const headers = { ...(options.headers || {}) };
@@ -57,6 +73,11 @@ class ApiClient {
         try {
             if (import.meta.env.DEV) {
                 console.log(`➡️ API 요청: ${options.method || 'GET'} ${url}`);
+                if (headers['Authorization']) {
+                   console.log(`🔑 Auth Token: ${headers['Authorization'].slice(0, 20)}...`);
+                } else {
+                   console.log('❌ No Auth Token sent');
+                }
             }
 
             const response = await fetch(url, config);

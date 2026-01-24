@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import authApi from '../../services/api/authApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginForm = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -15,7 +16,7 @@ const LoginForm = () => {
         setError('');
         setIsLoading(true);
 
-        const result = await authApi.signin({ email: identifier, password });
+        const result = await login(identifier, password);
 
         setIsLoading(false);
 

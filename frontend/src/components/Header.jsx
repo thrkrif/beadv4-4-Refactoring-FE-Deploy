@@ -2,12 +2,15 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Keyboard } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [showSearch, setShowSearch] = useState(false);
     const [keyword, setKeyword] = useState('');
+
+    const { isLoggedIn } = useAuth();
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
@@ -79,9 +82,19 @@ const Header = () => {
                             fontSize: '0.7rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold'
                         }}>2</span>
                     </Link>
-                    <Link to="/login">
+                    <div 
+                        onClick={() => {
+                            const token = sessionStorage.getItem('accessToken');
+                            if (token) {
+                                navigate('/mypage');
+                            } else {
+                                navigate('/signup');
+                            }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                    >
                         <User size={22} color="#fff" />
-                    </Link>
+                    </div>
                 </div>
             </div>
         </header>

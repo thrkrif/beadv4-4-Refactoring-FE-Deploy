@@ -8,8 +8,11 @@ const HomePage = () => {
 
     useEffect(() => {
         // Fetch some products for "New Arrivals"
-        productApi.getProducts('ALL', 0, 3).then(res => {
-            setFeatured(res.data.content);
+        // Fetch some products for "New Arrivals"
+        // 'ALL' category is not supported by getProducts, so we use searchProducts('') instead
+        productApi.searchProducts('').then(res => {
+            const content = Array.isArray(res) ? res : (res.content || []);
+            setFeatured(content.slice(0, 3));
         });
     }, []);
 

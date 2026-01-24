@@ -36,7 +36,7 @@ const cartApi = {
                 }
             };
         }
-        return apiClient.get('/carts');
+        return apiClient.get('/api/v1/carts');
     },
 
     // POST /api/v1/carts/items
@@ -53,7 +53,7 @@ const cartApi = {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
             return { data: { success: true } };
         }
-        return apiClient.post('/carts/items', { productId, quantity });
+        return apiClient.post('/api/v1/carts/items', { productId, quantity });
     },
 
     // Clear Cart (Helper)
