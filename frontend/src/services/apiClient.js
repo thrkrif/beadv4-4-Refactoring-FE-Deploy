@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://www.thock.site';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://15.164.161.36';
 
 class ApiClient {
     constructor() {
