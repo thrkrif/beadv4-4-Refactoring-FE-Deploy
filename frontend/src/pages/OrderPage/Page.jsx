@@ -54,27 +54,52 @@ const OrderPage = () => {
                 detailAddress: formData.detailAddress
             };
 
-                        // 1. Create Order
+            // 1. Create Order
             const response = await orderApi.createOrder(orderRequest);
             const orderId = response.orderNumber || response.data?.orderNumber;
-            const amount = response.totalSalePrice || response.data?.totalSalePrice;
+            const amount = response.pgAmount // pgAmount
             const orderName = `주문번호 ${orderId}`;
 
-            // 2. Request Payment via Toss
-            const clientKey = "test_ck_ORzdMaqN3wONXJBEp1bg35AkYXQG"; // Test Key
-            const tossPayments = window.TossPayments(clientKey);
+            // 0원 결제 처리 (예치금으로 모두 결제된 경우)
+            if (amount <= 0) {
+                alert('예치금으로 전액 결제되었습니다.');
+                navigate(`/payment/success?orderId=${orderId}&amount=0&paymentKey=INTERNAL_WALLET`);
+                return;
+            }
 
-            await tossPayments.requestPayment("카드", {
-                amount,
-                orderId,
-                orderName,
-                successUrl: `${window.location.origin}/payment/success`, // Use correct success route
-                failUrl: `${window.location.origin}/payment/fail`
-            });
+            // 2. Request Payment via Toss
+            // [중요] 이 clientKey는 백엔드 application.yml의 secretKey와 반드시 '같은 계정'의 세트여야 합니다.
+            const clientKey = "test_ck_ORzdMaqN3wONXJBEp1bg35AkYXQG"; 
+            
+            console.log('💳 토스 결제창 호출 시도...', { orderId, amount });
+
+            if (typeof window.TossPayments === 'undefined') {
+                alert('토스 결제 모듈(SDK)이 로드되지 않았습니다. 인터넷 연결이나 index.html의 script 설정을 확인해주세요.');
+                return;
+            }
+
+            try {
+                const tossPayments = window.TossPayments(clientKey);
+
+                await tossPayments.requestPayment("카드", {
+                    amount: Number(amount),
+                    orderId: orderId,
+                    orderName: orderName,
+                    successUrl: `${window.location.origin}/payment/success`,
+                    failUrl: `${window.location.origin}/payment/fail`
+                });
+            } catch (err) {
+                console.error('❌ 토스 위젯 호출 에러:', err);
+                if (err.code === 'INVALID_CLIENT_KEY') {
+                    alert('유효하지 않은 클라이언트 키입니다. 키 맨 뒤에 보이지 않는 공백이 포함되어 있지는 않은지 확인해주세요.');
+                } else {
+                    alert(`결제창을 실행하지 못했습니다: ${err.message || '알 수 없는 에러'}`);
+                }
+            }
 
         } catch (error) {
-            console.error(error);
-            alert('주문 또는 결제 요청 중 오류가 발생했습니다.');
+            console.error('❌ 결제 준비 중 에러:', error);
+            alert(error.message || '주문 처리 중 오류가 발생했습니다.');
         }
     };
 

@@ -101,11 +101,10 @@ const Header = () => {
                     </Link>
                     <div 
                         onClick={() => {
-                            const token = sessionStorage.getItem('accessToken');
-                            if (token) {
+                            if (isLoggedIn) {
                                 navigate('/mypage');
                             } else {
-                                navigate('/signup');
+                                navigate('/login');
                             }
                         }}
                         style={{ cursor: 'pointer' }}

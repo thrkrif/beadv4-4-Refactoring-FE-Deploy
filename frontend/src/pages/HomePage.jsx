@@ -7,13 +7,11 @@ const HomePage = () => {
     const [featured, setFeatured] = useState([]);
 
     useEffect(() => {
-        // Fetch some products for "New Arrivals"
-        // Fetch some products for "New Arrivals"
-        // 'ALL' category is not supported by getProducts, so we use searchProducts('') instead
-        productApi.searchProducts('').then(res => {
-            const content = Array.isArray(res) ? res : (res.content || []);
-            setFeatured(content.slice(0, 3));
-        });
+        // 백엔드 제약으로 'KEYBOARD' 카테고리의 최신 상품을 가져옵니다. 3개만 
+        productApi.getProducts('KEYBOARD', 0, 3).then(res => {
+            const content = res.content || [];
+            setFeatured(content);
+        }).catch(err => console.error('HomePage Fetch Error:', err));
     }, []);
 
     return (

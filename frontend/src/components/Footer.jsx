@@ -18,12 +18,12 @@ const Footer = () => {
                 </div>
                 <div style={{ borderBottom: '1px solid #333', width: '200px', margin: '0 auto 30px' }}></div>
                 <p style={{ fontSize: '0.9rem', lineHeight: '1.8', marginBottom: '20px' }}>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>(주)또각</span> | 대표: 김개발 | 사업자등록번호: 123-45-67890<br />
-                    통신판매업신고: 제 2024-서울강남-1234호 | 주소: 서울특별시 강남구 테헤란로 123<br />
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>(주)또각</span> | 대표: 노승억,양상훈,엄상현,이현종 | 사업자등록번호: 123-45-67890<br />
+                    통신판매업신고: 제 2026-서울강남-1234호 | 주소: 서울특별시 강남구 테헤란로 123<br />
                     이메일: <span style={{ color: 'var(--accent-primary)' }}>support@thock.com</span> | 제휴문의: partner@thock.com
                 </p>
                 <p style={{ fontSize: '0.85rem', marginTop: '20px', color: 'var(--text-muted)' }}>
-                    © 2024 Thock. Premium Keyboard Enthusiasts Platform. All rights reserved.
+                    © 2026 Thock. Premium Keyboard Enthusiasts Platform. All rights reserved.
                 </p>
             </div>
         </footer>

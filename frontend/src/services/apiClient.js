@@ -1,4 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.thock.site';
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://15.164.161.36';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// 'http://localhost:8080';
+// 'http://15.164.161.36';
+// http://15.164.161.36/swagger-ui/index.html
+
 
 class ApiClient {
     constructor() {

@@ -70,13 +70,16 @@ class AuthApi {
         }
     }
 
-    // 내 정보 조회 (회원 ID)
+    // 내 정보 조회 (ID 및 권한)
     async getMe() {
         try {
             const response = await apiClient.get('/api/v1/members/me');
-            // 응답이 단순 문자열(ID)일 수도 있고, JSON일 수도 있음. 
-            // MemberController.java: return AuthContext.memberId().toString(); -> 단순 문자열
-            return { success: true, memberId: response };
+            // response structure: { memberId: 1, role: 'USER' | 'SELLER' }
+            return { 
+                success: true, 
+                memberId: response.memberId,
+                role: response.role 
+            };
         } catch (error) {
             console.error('내 정보 조회 실패:', error);
             return { success: false, error };

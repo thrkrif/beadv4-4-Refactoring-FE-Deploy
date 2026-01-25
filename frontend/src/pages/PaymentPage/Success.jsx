@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import paymentApi from '../../services/api/paymentApi';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
@@ -14,6 +14,7 @@ const PaymentSuccessPage = () => {
     const paymentKey = searchParams.get('paymentKey');
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
+    const confirmed = useRef(false);
 
     useEffect(() => {
         if (!paymentKey || !orderId || !amount) {
@@ -21,6 +22,11 @@ const PaymentSuccessPage = () => {
             setLoading(false);
             return;
         }
+
+        if (confirmed.current) return;
+        confirmed.current = true;
+
+        console.log(`💳 결제 승인 요청 시작: orderId=${orderId}, amount=${amount}`);
 
         paymentApi.confirmPayment(paymentKey, orderId, amount)
             .then(res => {
