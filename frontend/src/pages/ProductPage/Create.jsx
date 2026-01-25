@@ -6,6 +6,7 @@ import productApi from '../../services/api/productApi';
 const ProductCreatePage = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         price: '',
@@ -37,7 +38,14 @@ const ProductCreatePage = () => {
             navigate('/products');
         } catch (error) {
             console.error(error);
-            alert('판매자 권한이 없거나 상품 등록에 실패했습니다. 판매자 등록 여부를 확인해주세요.');
+
+            const status = error.response?.status;
+            if (status === 403) {
+                setErrorMessage('판매자 권한이 없습니다. 판매자 등록 후 이용해주세요.');
+            } else {
+                setErrorMessage('상품 등록에 실패했습니다. 잠시 후 다시 시도해주세요.');
+            }
+
         } finally {
             setIsLoading(false);
         }
