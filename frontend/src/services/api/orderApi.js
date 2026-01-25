@@ -16,6 +16,11 @@ const orderApi = {
     // GET /api/v1/orders (Order History)
     getMyOrders: async () => {
         return apiClient.get('/api/v1/orders');
+    },
+
+    // GET /api/v1/orders/{orderId} (Order Detail)
+    getOrderDetail: async (orderId) => {
+        return apiClient.get(`/api/v1/orders/${orderId}`);
     }
 };
 

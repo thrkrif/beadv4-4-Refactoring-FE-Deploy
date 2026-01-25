@@ -201,29 +201,37 @@ const MyPage = () => {
                                     <button onClick={() => navigate('/products')} className="btn-primary" style={{ padding: '12px 30px' }}>둘러보기</button>
                                 </div>
                             ) : (
-                                orders.map(order => (
-                                    <div key={order.orderId} className="card" style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s', cursor: 'default' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>{new Date(order.createdAt).toLocaleDateString()}</span>
-                                                {getStatusBadge(order.state)}
+                                orders.map(order => {
+                                    const representativeItem = order.items?.[0];
+                                    const othersCount = (order.items?.length || 0) - 1;
+                                    const representativeName = representativeItem
+                                        ? `${representativeItem.productName}${othersCount > 0 ? ` 외 ${othersCount}건` : ''}`
+                                        : '상품 정보 없음';
+
+                                    return (
+                                        <div key={order.orderId} className="card" style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s', cursor: 'default' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>{new Date(order.createdAt).toLocaleDateString()}</span>
+                                                    {getStatusBadge(order.state)}
+                                                </div>
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px' }}>{representativeName}</h3>
+                                                <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                                    <span>No. {order.orderNumber}</span>
+                                                    <span>|</span>
+                                                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{order.totalSalePrice.toLocaleString()}원</span>
+                                                </div>
                                             </div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px' }}>{order.representativeProductName}</h3>
-                                            <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                                <span>No. {order.orderNumber}</span>
-                                                <span>|</span>
-                                                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{order.totalSalePrice.toLocaleString()}원</span>
+                                            <div style={{ textAlign: 'right', minWidth: '150px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', color: 'var(--accent-primary)', fontSize: '0.9rem', marginBottom: '12px', fontWeight: '600' }}>
+                                                    <Package size={16} />
+                                                    <span>{order.state === 'PAYMENT_COMPLETED' ? '배송 준비 중' : '주문 확인'}</span>
+                                                </div>
+                                                <button className="btn btn-outline" style={{ padding: '6px 15px', fontSize: '0.8rem' }} onClick={() => alert('상세조회 기능은 준비 중입니다.')}>상세 조회</button>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', minWidth: '150px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', color: 'var(--accent-primary)', fontSize: '0.9rem', marginBottom: '12px', fontWeight: '600' }}>
-                                                <Package size={16} />
-                                                <span>{order.state === 'PAYMENT_COMPLETED' ? '배송 준비 중' : '결제 확인중'}</span>
-                                            </div>
-                                            <button className="btn btn-outline" style={{ padding: '6px 15px', fontSize: '0.8rem' }} onClick={() => alert('배송 추적 기능은 준비 중입니다.')}>배송 조회</button>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     )}
