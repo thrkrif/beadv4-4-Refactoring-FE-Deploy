@@ -37,7 +37,7 @@ const ProductCreatePage = () => {
             navigate('/products');
         } catch (error) {
             console.error(error);
-            alert('상품 등록에 실패했습니다.');
+            alert('판매자 권한이 없거나 상품 등록에 실패했습니다. 판매자 등록 여부를 확인해주세요.');
         } finally {
             setIsLoading(false);
         }
