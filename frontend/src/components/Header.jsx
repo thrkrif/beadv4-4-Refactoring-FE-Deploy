@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Keyboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,22 @@ const Header = () => {
     const [showSearch, setShowSearch] = useState(false);
     const [keyword, setKeyword] = useState('');
 
+    const [cartCount, setCartCount] = useState(0);
+
     const { isLoggedIn } = useAuth();
+
+    // Fetch Cart Count
+    useEffect(() => {
+        if (isLoggedIn) {
+            import('../services/api/cartApi').then(module => {
+                module.default.getCart().then(res => {
+                    const data = res;
+                    const count = data.items ? data.items.length : 0;
+                    setCartCount(count);
+                }).catch(err => console.error('Header Cart Fetch Error:', err));
+            });
+        }
+    }, [location.pathname, isLoggedIn]); // Re-fetch on navigation to allow updates
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
@@ -75,12 +90,14 @@ const Header = () => {
 
                     <Link to="/cart" style={{ position: 'relative' }}>
                         <ShoppingCart size={22} color="#fff" />
-                        {/* Mock Badge */}
-                        <span style={{
-                            position: 'absolute', top: -5, right: -8,
-                            background: 'var(--accent-secondary)', color: 'white',
-                            fontSize: '0.7rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold'
-                        }}>2</span>
+                        {/* Badge */}
+                        {cartCount > 0 && (
+                            <span style={{
+                                position: 'absolute', top: -5, right: -8,
+                                background: 'var(--accent-secondary)', color: 'white',
+                                fontSize: '0.7rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold'
+                            }}>{cartCount}</span>
+                        )}
                     </Link>
                     <div 
                         onClick={() => {

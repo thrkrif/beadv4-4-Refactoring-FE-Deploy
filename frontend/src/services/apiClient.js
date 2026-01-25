@@ -1,5 +1,11 @@
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://15.164.161.36';
-const API_BASE_URL = 'https://api.thock.site';
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://15.164.161.36';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// 'http://localhost:8080';
+// 'http://15.164.161.36';
+// http://15.164.161.36/swagger-ui/index.html
+
 
 class ApiClient {
     constructor() {
@@ -68,7 +74,7 @@ class ApiClient {
             if (import.meta.env.DEV) {
                 console.log(`➡️ API 요청: ${options.method || 'GET'} ${url}`);
                 if (headers['Authorization']) {
-                   console.log(`🔑 Auth Token: ${headers['Authorization'].slice(0, 20)}...`);
+                   console.log(`🔑 Auth Token: ${headers['Authorization']}`);
                 } else {
                    console.log('❌ No Auth Token sent');
                 }

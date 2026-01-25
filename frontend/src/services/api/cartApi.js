@@ -1,64 +1,36 @@
 
 import apiClient from '../apiClient';
-import { getMockProductDetail } from '../../mocks/productMocks';
-
-const USE_MOCK = true;
-const STORAGE_KEY = 'THOCK_CART';
 
 const cartApi = {
     // GET /api/v1/carts
     getCart: async () => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 400));
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            // Need to enrich with product details for display
-            // In real API, the response contains product info.
-            // Using mock helper to get names/prices
-            const enriched = stored.map(item => {
-                const product = getMockProductDetail(item.productId);
-                return {
-                    ...item,
-                    productName: product ? product.name : 'Unknown Product',
-                    price: product ? product.price : 0,
-                    totalPrice: product ? product.price * item.quantity : 0,
-                    imageUrl: product ? `https://via.placeholder.com/100` : '', // Placeholder in mock helper doesn't have image, need to fix or use detail
-                    // Actually getMockProductDetail logic in productMocks didn't return imageUrl
-                    // I will fix getMockProductDetail in my head or just assume productList mock has it.
-                };
-            });
-
-            const totalAmount = enriched.reduce((sum, item) => sum + item.totalPrice, 0);
-
-            return {
-                data: {
-                    items: enriched,
-                    totalAmount: totalAmount
-                }
-            };
-        }
         return apiClient.get('/api/v1/carts');
     },
 
     // POST /api/v1/carts/items
     addToCart: async (productId, quantity) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 600));
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            const existing = stored.find(i => i.productId === productId);
-            if (existing) {
-                existing.quantity += quantity;
-            } else {
-                stored.push({ productId, quantity });
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-            return { data: { success: true } };
-        }
         return apiClient.post('/api/v1/carts/items', { productId, quantity });
     },
 
-    // Clear Cart (Helper)
+    // PATCH /api/v1/carts/items/{id} (Not implemented in Backend MVP)
+    updateCartItem: async (itemId, quantity) => {
+        console.warn('Update Cart Item: Not implemented in Backend MVP');
+        // throw new Error('수량 변경 기능은 아직 지원되지 않습니다.');
+        return { success: false, message: '기능 준비 중입니다.' };
+    },
+
+    // DELETE /api/v1/carts/items/{id} (Not implemented in Backend MVP)
+    removeCartItem: async (itemId) => {
+        console.warn('Remove Cart Item: Not implemented in Backend MVP');
+        // throw new Error('상품 삭제 기능은 아직 지원되지 않습니다.');
+        return { success: false, message: '기능 준비 중입니다.' };
+    },
+
+    // Clear Cart (Helper - Local only or implement clear API if exists)
     clearCart: () => {
-        if (USE_MOCK) localStorage.removeItem(STORAGE_KEY);
+        // If backend has clear API, call it. Otherwise just local cleanup if needed?
+        // Currently backend clears cart on Order creation automatically.
+        // Explicit clear might not be supported.
     }
 };
 

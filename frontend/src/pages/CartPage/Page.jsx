@@ -16,7 +16,12 @@ const CartPage = () => {
     const loadCart = () => {
         setLoading(true);
         cartApi.getCart().then(res => {
-            setBasket(res.data);
+            // Mapping Backend Response (CartItemListResponse) to Frontend requirements
+            const data = res; // API client returns the data directly
+            setBasket({
+                items: data.items || [],
+                totalAmount: data.totalSalePrice || data.totalPrice || 0
+            });
             setLoading(false);
         }).catch(err => {
             console.error(err);

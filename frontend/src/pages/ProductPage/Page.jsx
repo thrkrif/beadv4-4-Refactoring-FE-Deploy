@@ -18,14 +18,15 @@ const ProductPage = () => {
     const fetchProducts = () => {
         setLoading(true);
         setError(null);
+        // Backend currently has no "Get All" endpoint and only supports KEYBOARD.
+        // So for "ALL" category, we fetch "KEYBOARD" products to show something.
         const fetchMethod = (category === 'ALL' && !keyword)
-            ? productApi.getProducts('KEYBOARD')
-            : (keyword ? productApi.searchProducts(keyword) : productApi.getProducts(category));
-
+             ? productApi.getProducts('KEYBOARD')
+             : (keyword ? productApi.searchProducts(keyword) : productApi.getProducts(category));
         fetchMethod.then(res => {
             // searchProducts returns List<ProductListResponse> (array)
             // getProducts returns Page<ProductListResponse> (object with content array)
-            const content = Array.isArray(res) ? res : (res.content || []); 
+            const content = Array.isArray(res) ? res : (res.content || []);
             setProducts(content);
             setLoading(false);
         }).catch(err => {

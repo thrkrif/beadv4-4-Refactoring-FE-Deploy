@@ -13,11 +13,20 @@ export const AuthProvider = ({ children }) => {
         const checkLoginStatus = async () => {
             const token = authApi.getAccessToken();
             if (token) {
-                setIsLoggedIn(true);
-                // 유저 정보 가져오기
-                const res = await authApi.getMe();
-                if (res.success) {
-                    setUser({ memberId: res.memberId });
+                try {
+                    // 유저 정보 가져오기
+                    const res = await authApi.getMe();
+                    if (res.success) {
+                        setUser({ memberId: res.memberId });
+                        setIsLoggedIn(true);
+                    } else {
+                       throw new Error('User info fetch failed');
+                    }
+                } catch (err) {
+                    console.error('Session validation failed:', err);
+                    authApi.clearTokens(); // Token useless or backend error -> logout
+                    setIsLoggedIn(false);
+                    setUser(null);
                 }
             } else {
                 setIsLoggedIn(false);

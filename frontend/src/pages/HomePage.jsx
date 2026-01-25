@@ -29,18 +29,19 @@ const HomePage = () => {
                 padding: '20px',
                 textAlign: 'center'
             }}>
-                <h1 style={{ fontSize: '4rem', marginBottom: '1rem', textShadow: '0 0 20px rgba(0,229,255,0.3)' }}>
-                    FIND YOUR <span style={{ color: 'var(--accent-primary)' }}>THOCK</span>
+                <h1 style={{ fontSize: '3.5rem', marginBottom: '1.5rem', textShadow: '0 0 20px rgba(0,229,255,0.3)', fontWeight: '800' }}>
+                    완벽한 타건감, 당신만의 <span style={{ color: 'var(--accent-primary)' }}>THOCK</span>
                 </h1>
-                <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', maxWidth: '600px', marginBottom: '2rem' }}>
-                    Premium Custom Keyboards, Switches, and Accessories for the enthusiast.
+                <p style={{ fontSize: '1.4rem', color: 'var(--text-secondary)', maxWidth: '800px', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+                    커스텀 키보드부터 전문가용 스위치, 프리미엄 키캡까지.<br />
+                    키보드 애호가들을 위한 전문 이커머스 플랫폼 Thock입니다.
                 </p>
                 <div style={{ display: 'flex', gap: '20px' }}>
-                    <Link to="/products" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}>
-                        SHOP NOW
+                    <Link to="/products" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1.2rem 2.5rem', borderRadius: '50px' }}>
+                        쇼핑 시작하기
                     </Link>
-                    <Link to="/products?category=KEYBOARD" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}>
-                        VIEW KEYBOARDS
+                    <Link to="/products?category=KEYBOARD" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1.2rem 2.5rem', borderRadius: '50px' }}>
+                        키보드 보러가기
                     </Link>
                 </div>
             </section>
@@ -48,8 +49,8 @@ const HomePage = () => {
             {/* Featured Section */}
             <section className="container" style={{ padding: '80px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                    <h2>New Arrivals</h2>
-                    <Link to="/products" style={{ color: 'var(--accent-primary)', fontWeight: '600' }}>View All &rarr;</Link>
+                    <h2>신규 입고 상품</h2>
+                    <Link to="/products" style={{ color: 'var(--accent-primary)', fontWeight: '600' }}>전체 보기 &rarr;</Link>
                 </div>
 
                 <div className="grid-cols-3">
@@ -67,7 +68,7 @@ const HomePage = () => {
                                         position: 'absolute', top: 10, left: 10,
                                         background: 'rgba(0,0,0,0.7)', color: 'var(--accent-secondary)',
                                         padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold'
-                                    }}>Low Stock</div>
+                                    }}>품절 임박</div>
                                 )}
                             </div>
                             <div style={{ padding: '20px' }}>
