@@ -86,7 +86,7 @@ const Header = () => {
                             }}>{cartCount}</span>
                         )}
                     </Link>
-                    <div
+                    <div 
                         onClick={() => {
                             if (isLoggedIn) {
                                 navigate('/mypage');

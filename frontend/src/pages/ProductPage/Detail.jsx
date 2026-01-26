@@ -54,7 +54,7 @@ const ProductDetailPage = () => {
                             src={product.imageUrl || 'https://placehold.co/600x600?text=Thock'}
                             alt={product.name}
                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            onError={(e) => { e.target.onerror = null; e.target.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/600x600?text=${encodeURIComponent(product.name)}`; }}
                         />
                     </div>
                 </div>

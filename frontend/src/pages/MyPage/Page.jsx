@@ -24,10 +24,10 @@ const MyPage = () => {
 
     const fetchFinanceData = async (memberId) => {
         console.log('🔄 Fetching Financial Data for member:', memberId);
-
+        
         // Always fetch wallet and logs for everyone
         const fetchWallet = async () => {
-            try { return await paymentApi.getWallet(memberId); }
+            try { return await paymentApi.getWallet(memberId); } 
             catch (e) { console.error('Wallet fetch failed:', e); return null; }
         };
         const fetchWLogs = async () => {
@@ -56,12 +56,12 @@ const MyPage = () => {
         ]);
 
         if (wallet) setWalletInfo(wallet);
-
+        
         const combinedLogs = [
             ...(wLogs?.walletLog || []),
             ...(rLogs?.revenueLog || [])
         ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
+        
         setFinancialLogs(combinedLogs);
         if (activeTab === 'seller-center') {
             setSettlements(payouts || []);
@@ -74,7 +74,7 @@ const MyPage = () => {
             setLoading(true);
             try {
                 const currentUser = await refresh();
-
+                
                 // Fetch orders with safety catch
                 try {
                     const orderData = await orderApi.getMyOrders();
@@ -83,7 +83,7 @@ const MyPage = () => {
                     console.warn('Orders fetch failed (likely endpoint missing):', orderErr);
                     setOrders([]);
                 }
-
+                
                 // Always fetch financial data for any user
                 if (currentUser?.memberId) {
                     await fetchFinanceData(currentUser.memberId);
@@ -156,20 +156,20 @@ const MyPage = () => {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: '25px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '30px' }}>
-                <button
+                <button 
                     onClick={() => setActiveTab('orders')}
                     style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'orders' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'orders' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'orders' ? '700' : '500', transition: 'all 0.2s' }}
                 >
                     내 주문 내역
                 </button>
-                <button
+                <button 
                     onClick={() => setActiveTab('wallet')}
                     style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'wallet' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'wallet' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'wallet' ? '700' : '500', transition: 'all 0.2s' }}
                 >
                     내 지갑
                 </button>
                 {isSeller && (
-                    <button
+                    <button 
                         onClick={() => setActiveTab('seller-center')}
                         style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'seller-center' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'seller-center' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'seller-center' ? '700' : '500', transition: 'all 0.2s' }}
                     >
@@ -177,7 +177,7 @@ const MyPage = () => {
                     </button>
                 )}
                 {!isSeller && (
-                    <button
+                    <button 
                         onClick={() => setActiveTab('be-seller')}
                         style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'be-seller' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'be-seller' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer' }}
                     >
@@ -204,7 +204,7 @@ const MyPage = () => {
                                 orders.map(order => {
                                     const representativeItem = order.items?.[0];
                                     const othersCount = (order.items?.length || 0) - 1;
-                                    const representativeName = representativeItem
+                                    const representativeName = representativeItem 
                                         ? `${representativeItem.productName}${othersCount > 0 ? ` 외 ${othersCount}건` : ''}`
                                         : '상품 정보 없음';
 
@@ -285,7 +285,7 @@ const MyPage = () => {
                     {/* Integrated Seller Dashboard - Refined Vertical Stack Layout */}
                     {isSeller && activeTab === 'seller-center' && (
                         <div style={{ display: 'grid', gap: '40px' }}>
-
+                            
                             {/* Top Summary Stats */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
                                 <div className="card" style={{ padding: '25px', display: 'flex', alignItems: 'center', gap: '20px', background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.1)' }}>
