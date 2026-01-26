@@ -19,18 +19,21 @@ const cartApi = {
         return { success: false, message: '기능 준비 중입니다.' };
     },
 
-    // DELETE /api/v1/carts/items/{id} (Not implemented in Backend MVP)
-    removeCartItem: async (itemId) => {
-        console.warn('Remove Cart Item: Not implemented in Backend MVP');
-        // throw new Error('상품 삭제 기능은 아직 지원되지 않습니다.');
-        return { success: false, message: '기능 준비 중입니다.' };
+    // DELETE /api/v1/carts/items
+    removeCartItems: async (cartItemIds) => {
+        // cartItemIds: [1, 2, 3]
+        return apiClient.request('/api/v1/carts/items', {
+            method: 'DELETE',
+            body: JSON.stringify(cartItemIds)
+        });
     },
 
-    // Clear Cart (Helper - Local only or implement clear API if exists)
-    clearCart: () => {
-        // If backend has clear API, call it. Otherwise just local cleanup if needed?
-        // Currently backend clears cart on Order creation automatically.
-        // Explicit clear might not be supported.
+    // Clear Cart (Helper to call the same delete endpoint with empty list)
+    clearCart: async () => {
+        return apiClient.request('/api/v1/carts/items', {
+            method: 'DELETE',
+            body: JSON.stringify([])
+        });
     }
 };
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Keyboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const Header = () => {
     const location = useLocation();
@@ -10,22 +11,8 @@ const Header = () => {
     const [showSearch, setShowSearch] = useState(false);
     const [keyword, setKeyword] = useState('');
 
-    const [cartCount, setCartCount] = useState(0);
-
     const { isLoggedIn } = useAuth();
-
-    // Fetch Cart Count
-    useEffect(() => {
-        if (isLoggedIn) {
-            import('../services/api/cartApi').then(module => {
-                module.default.getCart().then(res => {
-                    const data = res;
-                    const count = data.items ? data.items.length : 0;
-                    setCartCount(count);
-                }).catch(err => console.error('Header Cart Fetch Error:', err));
-            });
-        }
-    }, [location.pathname, isLoggedIn]); // Re-fetch on navigation to allow updates
+    const { cartCount } = useCart();
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
@@ -99,7 +86,7 @@ const Header = () => {
                             }}>{cartCount}</span>
                         )}
                     </Link>
-                    <div 
+                    <div
                         onClick={() => {
                             if (isLoggedIn) {
                                 navigate('/mypage');

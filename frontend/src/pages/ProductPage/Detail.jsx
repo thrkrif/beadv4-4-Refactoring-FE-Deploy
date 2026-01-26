@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
 import cartApi from '../../services/api/cartApi';
 import { ShoppingBag, ChevronLeft } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
@@ -12,6 +13,7 @@ const ProductDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
+    const { updateCartCount } = useCart();
 
     useEffect(() => {
         productApi.getProductDetail(id).then(res => {
@@ -28,6 +30,7 @@ const ProductDetailPage = () => {
         setAdding(true);
         cartApi.addToCart(parseInt(id), quantity).then(() => {
             setAdding(false);
+            updateCartCount(); // Sync Header
             if (window.confirm('장바구니에 담았습니다. 장바구니로 이동하시겠습니까?')) {
                 navigate('/cart');
             }
