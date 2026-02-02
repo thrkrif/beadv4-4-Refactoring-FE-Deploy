@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Keyboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const Header = () => {
     const location = useLocation();
@@ -11,6 +12,7 @@ const Header = () => {
     const [keyword, setKeyword] = useState('');
 
     const { isLoggedIn } = useAuth();
+    const { cartCount } = useCart();
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
@@ -75,20 +77,21 @@ const Header = () => {
 
                     <Link to="/cart" style={{ position: 'relative' }}>
                         <ShoppingCart size={22} color="#fff" />
-                        {/* Mock Badge */}
-                        <span style={{
-                            position: 'absolute', top: -5, right: -8,
-                            background: 'var(--accent-secondary)', color: 'white',
-                            fontSize: '0.7rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold'
-                        }}>2</span>
+                        {/* Badge */}
+                        {cartCount > 0 && (
+                            <span style={{
+                                position: 'absolute', top: -5, right: -8,
+                                background: 'var(--accent-secondary)', color: 'white',
+                                fontSize: '0.7rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold'
+                            }}>{cartCount}</span>
+                        )}
                     </Link>
                     <div 
                         onClick={() => {
-                            const token = sessionStorage.getItem('accessToken');
-                            if (token) {
+                            if (isLoggedIn) {
                                 navigate('/mypage');
                             } else {
-                                navigate('/signup');
+                                navigate('/login');
                             }
                         }}
                         style={{ cursor: 'pointer' }}

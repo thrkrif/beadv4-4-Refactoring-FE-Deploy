@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
 import cartApi from '../../services/api/cartApi';
 import { ShoppingBag, ChevronLeft } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
@@ -12,6 +13,7 @@ const ProductDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
+    const { updateCartCount } = useCart();
 
     useEffect(() => {
         productApi.getProductDetail(id).then(res => {
@@ -28,6 +30,7 @@ const ProductDetailPage = () => {
         setAdding(true);
         cartApi.addToCart(parseInt(id), quantity).then(() => {
             setAdding(false);
+            updateCartCount(); // Sync Header
             if (window.confirm('장바구니에 담았습니다. 장바구니로 이동하시겠습니까?')) {
                 navigate('/cart');
             }
@@ -48,10 +51,10 @@ const ProductDetailPage = () => {
                 <div style={{ flex: 1, minWidth: '300px' }}>
                     <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', height: '100%', maxHeight: '500px' }}>
                         <img
-                            src={product.imageUrl || 'https://via.placeholder.com/600x600?text=Thock'}
+                            src={product.imageUrl || 'https://placehold.co/600x600?text=Thock'}
                             alt={product.name}
                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            onError={(e) => { e.target.onerror = null; e.target.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/600x600?text=${encodeURIComponent(product.name)}`; }}
                         />
                     </div>
                 </div>

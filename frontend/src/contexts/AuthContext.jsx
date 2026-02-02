@@ -13,11 +13,20 @@ export const AuthProvider = ({ children }) => {
         const checkLoginStatus = async () => {
             const token = authApi.getAccessToken();
             if (token) {
-                setIsLoggedIn(true);
-                // 유저 정보 가져오기
-                const res = await authApi.getMe();
-                if (res.success) {
-                    setUser({ memberId: res.memberId });
+                try {
+                    // 유저 정보 가져오기
+                    const res = await authApi.getMe();
+                    if (res.success) {
+                        setUser({ memberId: res.memberId, role: res.role });
+                        setIsLoggedIn(true);
+                    } else {
+                       throw new Error('User info fetch failed');
+                    }
+                } catch (err) {
+                    console.error('Session validation failed:', err);
+                    authApi.clearTokens(); // Token useless or backend error -> logout
+                    setIsLoggedIn(false);
+                    setUser(null);
                 }
             } else {
                 setIsLoggedIn(false);
@@ -38,18 +47,32 @@ export const AuthProvider = ({ children }) => {
             // 로그인 성공 시 바로 유저 정보 로딩
             const meRes = await authApi.getMe();
             if (meRes.success) {
-                setUser({ memberId: meRes.memberId });
+                setUser({ memberId: meRes.memberId, role: meRes.role });
             }
             return { success: true };
         }
         return result;
     };
 
+    const refresh = async () => {
+        if (!authApi.getAccessToken()) return null;
+        try {
+            const res = await authApi.getMe();
+            if (res.success) {
+                const newUser = { memberId: res.memberId, role: res.role };
+                setUser(newUser);
+                return newUser;
+            }
+        } catch (err) {
+            console.error('Info refresh failed:', err);
+        }
+        return null;
+    };
+
     const logout = () => {
         authApi.clearTokens();
         setIsLoggedIn(false);
         setUser(null);
-        // 필요한 경우 로그인 페이지로 리다이렉트 로직 추가 가능 (컴포넌트 레벨에서 처리 권장)
     };
 
     const value = {
@@ -57,7 +80,8 @@ export const AuthProvider = ({ children }) => {
         user,
         isLoading,
         login,
-        logout
+        logout,
+        refresh
     };
 
     return (

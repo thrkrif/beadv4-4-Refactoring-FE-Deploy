@@ -60,6 +60,14 @@ const productApi = {
      */
     searchProducts: async (keyword) => {
         return apiClient.get('/api/v1/products/search', { params: { keyword } });
+    },
+
+    /**
+     * Get My Products (Seller)
+     * GET /api/v1/products/me
+     */
+    getMyProducts: async (page = 0, size = 10) => {
+        return apiClient.get('/api/v1/products/me', { params: { page, size } });
     }
 };
 

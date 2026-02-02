@@ -7,10 +7,10 @@ const ProductItem = ({ product }) => {
         <Link to={`/products/${product.id}`} className="card" style={{ textDecoration: 'none' }}>
             <div style={{ height: '240px', overflow: 'hidden', background: '#fff' }}>
                 <img
-                    src={product.imageUrl}
+                    src={product.imageUrl || `https://placehold.co/300x200?text=${product.name}`}
                     alt={product.name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => { e.target.onerror = null; e.target.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/300x200?text=${encodeURIComponent(product.name)}`; }}
                 />
             </div>
             <div style={{ padding: '20px' }}>

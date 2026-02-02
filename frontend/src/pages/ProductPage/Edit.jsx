@@ -1,22 +1,49 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
 
-const ProductCreatePage = () => {
+const ProductEditPage = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         price: '',
         salePrice: '',
         stock: '',
-        category: 'KEYBOARD', // Default
+        category: 'KEYBOARD',
         description: '',
         imageUrl: '',
-        detail: {} // Empty map for now
+        detail: {}
     });
+
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const res = await productApi.getProductDetail(id);
+                // Map API response to form data
+                setFormData({
+                    name: res.name || '',
+                    price: res.price || '',
+                    salePrice: res.salePrice || res.price || '',
+                    stock: res.stock || '',
+                    category: res.category || 'KEYBOARD',
+                    description: res.description || '',
+                    imageUrl: res.imageUrl || '',
+                    detail: res.detail || {}
+                });
+            } catch (err) {
+                console.error('Fetch error:', err);
+                setErrorMessage('상품 정보를 불러오는 데 실패했습니다.');
+            } finally {
+                setIsFetching(false);
+            }
+        };
+        fetchProduct();
+    }, [id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -28,33 +55,41 @@ const ProductCreatePage = () => {
         setIsLoading(true);
 
         try {
-            await productApi.createProduct({
+            await productApi.updateProduct(id, {
                 ...formData,
                 price: Number(formData.price),
                 salePrice: Number(formData.salePrice || formData.price),
                 stock: Number(formData.stock),
             });
-            alert('상품이 등록되었습니다.');
-            navigate('/products');
+            alert('상품 정보가 수정되었습니다.');
+            navigate('/mypage'); // Redirect back to MyPage
         } catch (error) {
             console.error(error);
-
-            const status = error.response?.status;
-            if (status === 403) {
-                setErrorMessage('판매자 권한이 없습니다. 판매자 등록 후 이용해주세요.');
-            } else {
-                setErrorMessage('상품 등록에 실패했습니다. 잠시 후 다시 시도해주세요.');
-            }
-
+            setErrorMessage('상품 수정에 실패했습니다.');
         } finally {
             setIsLoading(false);
         }
     };
 
+    if (isFetching) return (
+        <div className="container" style={{ padding: '100px 0', textAlign: 'center' }}>
+            데이터를 불러오는 중...
+        </div>
+    );
+
     return (
         <div className="container" style={{ padding: '40px 0', maxWidth: '800px' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '30px' }}>상품 등록</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <h1 style={{ fontSize: '2rem' }}>상품 정보 수정</h1>
+                <button onClick={() => navigate('/mypage')} className="btn btn-outline" style={{ padding: '8px 20px' }}>취소</button>
+            </div>
             
+            {errorMessage && (
+                <div style={{ padding: '15px', color: '#FF4081', background: 'rgba(255, 64, 129, 0.1)', borderRadius: '8px', marginBottom: '20px' }}>
+                    {errorMessage}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'grid', gap: '20px' }}>
                     
@@ -71,6 +106,8 @@ const ProductCreatePage = () => {
                         <select name="category" value={formData.category} onChange={handleChange}
                             style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }}>
                             <option value="KEYBOARD">키보드</option>
+                            <option value="KEYCAP">키캡</option>
+                            <option value="SWITCH">스위치</option>
                         </select>
                     </div>
 
@@ -111,7 +148,7 @@ const ProductCreatePage = () => {
                     </div>
 
                     <button type="submit" className="btn btn-primary" disabled={isLoading} style={{ marginTop: '20px', padding: '15px' }}>
-                        {isLoading ? '등록 중...' : '상품 등록하기'}
+                        {isLoading ? '수정 중...' : '상품 정보 수정하기'}
                     </button>
                 </div>
             </form>
@@ -119,4 +156,4 @@ const ProductCreatePage = () => {
     );
 };
 
-export default ProductCreatePage;
+export default ProductEditPage;

@@ -4,7 +4,9 @@ import { Filter } from 'lucide-react';
 
 const CATEGORIES = [
     { id: 'ALL', label: '전체 상품' },
-    { id: 'KEYBOARD', label: '키보드' }
+    { id: 'KEYBOARD', label: '키보드' },
+    { id: 'SWITCH', label: '스위치' },
+    { id: 'KEYCAP', label: '키캡' }
 ];
 
 const ProductForm = ({ currentCategory, onCategoryChange }) => {
