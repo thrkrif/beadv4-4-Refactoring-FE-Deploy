@@ -1,29 +1,80 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
 import cartApi from '../../services/api/cartApi';
-import { ShoppingBag, ChevronLeft } from 'lucide-react';
+import { ShoppingBag, ChevronLeft, Star } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import ReviewSection from './components/ReviewSection';
+import { getPriceInfo } from '../../utils/price';
+import reviewApi from '../../services/api/reviewApi';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
+    const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, reviewCount: 0 });
     const { updateCartCount } = useCart();
+    const { originalPrice, salePrice, hasDiscount, discountRate } = getPriceInfo(product || {});
 
     useEffect(() => {
-        productApi.getProductDetail(id).then(res => {
-            // apiClient returns the DTO directly
-            setProduct(res);
-            setLoading(false);
-        }).catch(err => {
-            console.error(err);
-            setLoading(false);
-        });
+        let isMounted = true;
+
+        const fetchProduct = async () => {
+            try {
+                const detail = await productApi.getProductDetail(id);
+                let imageUrl = detail?.imageUrl || location.state?.product?.imageUrl || '';
+                let originalPrice = location.state?.product?.price || detail?.originalPrice || detail?.price;
+
+                // 상세 API가 imageUrl을 내려주지 않는 경우 검색 결과에서 보강
+                if (!imageUrl && detail?.name) {
+                    try {
+                        const searched = await productApi.searchProducts(detail.name);
+                        const matched = (searched || []).find((item) => String(item.id) === String(id));
+                        imageUrl = matched?.imageUrl || '';
+                        originalPrice = matched?.price || originalPrice;
+                    } catch (searchError) {
+                        console.error('image fallback search failed:', searchError);
+                    }
+                }
+
+                if (isMounted) {
+                    setProduct({
+                        ...detail,
+                        imageUrl,
+                        originalPrice,
+                        salePrice: detail?.price
+                    });
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error(err);
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        fetchProduct();
+        return () => {
+            isMounted = false;
+        };
+    }, [id, location.state]);
+
+    useEffect(() => {
+        let isMounted = true;
+        reviewApi.getProductReviewSummary(id)
+            .then((summary) => {
+                if (isMounted) setReviewSummary(summary || { averageRating: 0, reviewCount: 0 });
+            })
+            .catch((error) => {
+                console.error('failed to fetch detail review summary', error);
+            });
+        return () => {
+            isMounted = false;
+        };
     }, [id]);
 
     const handleAddToCart = () => {
@@ -67,19 +118,49 @@ const ProductDetailPage = () => {
                         {product.description}
                     </p>
 
-                    <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '30px' }}>
-                        {product.price ? product.price.toLocaleString() : 0}원
+                    <div style={{ marginBottom: '30px' }}>
+                        {hasDiscount && (
+                            <div style={{ color: 'var(--accent-secondary)', fontWeight: 700, marginBottom: '6px' }}>
+                                {discountRate}% 할인
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'end', gap: '10px' }}>
+                            <span style={{ fontSize: '2rem', fontWeight: '700' }}>
+                                {(salePrice || 0).toLocaleString()}원
+                            </span>
+                            {hasDiscount && (
+                                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', marginBottom: '4px' }}>
+                                    {originalPrice.toLocaleString()}원
+                                </span>
+                            )}
+                        </div>
+                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: '#ffcc00',
+                                fontWeight: 700,
+                                fontSize: '0.82rem'
+                            }}>
+                                <Star size={14} fill="currentColor" strokeWidth={1.8} />
+                                {Number(reviewSummary.averageRating || 0).toFixed(1)}
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                리뷰 {reviewSummary.reviewCount || 0}개
+                            </span>
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '30px' }}>
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '30px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
                             <button
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                style={{ padding: '10px 15px', background: 'transparent', color: '#fff' }}>-</button>
+                                style={{ padding: '10px 15px', background: 'transparent', color: 'var(--text-primary)', fontWeight: 700 }}>-</button>
                             <span style={{ padding: '10px 15px', minWidth: '40px', textAlign: 'center' }}>{quantity}</span>
                             <button
                                 onClick={() => setQuantity(quantity + 1)}
-                                style={{ padding: '10px 15px', background: 'transparent', color: '#fff' }}>+</button>
+                                style={{ padding: '10px 15px', background: 'transparent', color: 'var(--text-primary)', fontWeight: 700 }}>+</button>
                         </div>
                         <span style={{ color: 'var(--text-secondary)' }}>
                             재고: {product.stock}개
@@ -97,6 +178,8 @@ const ProductDetailPage = () => {
                     </button>
                 </div>
             </div>
+
+            <ReviewSection productId={id} />
         </div>
     );
 };

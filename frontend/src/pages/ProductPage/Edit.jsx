@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
+import { Package, Save, Image as ImageIcon, AlignLeft, DollarSign, Tag, Archive, ArrowLeft } from 'lucide-react';
 
 const ProductEditPage = () => {
     const { id } = useParams();
@@ -72,84 +73,154 @@ const ProductEditPage = () => {
     };
 
     if (isFetching) return (
-        <div className="container" style={{ padding: '100px 0', textAlign: 'center' }}>
+        <div style={{ padding: '100px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
             데이터를 불러오는 중...
         </div>
     );
 
     return (
-        <div className="container" style={{ padding: '40px 0', maxWidth: '800px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '2rem' }}>상품 정보 수정</h1>
-                <button onClick={() => navigate('/mypage')} className="btn btn-outline" style={{ padding: '8px 20px' }}>취소</button>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '800px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                    <ArrowLeft size={24} color="var(--text-primary)" />
+                </button>
+                <h1 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>상품 정보 수정</h1>
             </div>
-            
-            {errorMessage && (
-                <div style={{ padding: '15px', color: '#FF4081', background: 'rgba(255, 64, 129, 0.1)', borderRadius: '8px', marginBottom: '20px' }}>
-                    {errorMessage}
-                </div>
-            )}
 
-            <form onSubmit={handleSubmit} style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'grid', gap: '20px' }}>
-                    
+            <form onSubmit={handleSubmit} style={{ background: '#fff', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'grid', gap: '25px' }}>
+
                     {/* Name */}
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px' }}>상품명</label>
-                        <input name="name" value={formData.name} onChange={handleChange} required 
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            <Tag size={18} color="var(--accent-primary)" /> 상품명
+                        </label>
+                        <input
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            required
+                            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                        />
                     </div>
 
                     {/* Category */}
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px' }}>카테고리</label>
-                        <select name="category" value={formData.category} onChange={handleChange}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }}>
-                            <option value="KEYBOARD">키보드</option>
-                            <option value="KEYCAP">키캡</option>
-                            <option value="SWITCH">스위치</option>
-                        </select>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            <Archive size={18} color="var(--accent-primary)" /> 카테고리
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                            <select
+                                name="category"
+                                value={formData.category}
+                                onChange={handleChange}
+                                style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem', appearance: 'none', cursor: 'pointer' }}>
+                                <option value="KEYBOARD">키보드</option>
+                                <option value="KEYCAP">키캡</option>
+                                <option value="SWITCH">스위치</option>
+                                <option value="DIY_KIT">DIY 키트</option>
+                            </select>
+                            <div style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Prices */}
-                    <div style={{ display: 'flex', gap: '20px' }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>정가</label>
-                            <input type="number" name="price" value={formData.price} onChange={handleChange} required 
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                <DollarSign size={18} color="var(--accent-primary)" /> 정가
+                            </label>
+                            <input
+                                type="number"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleChange}
+                                required
+                                style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                            />
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>판매가 (할인가)</label>
-                            <input type="number" name="salePrice" value={formData.salePrice} onChange={handleChange} 
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                <DollarSign size={18} color="var(--accent-secondary)" /> 할인가 (판매가)
+                            </label>
+                            <input
+                                type="number"
+                                name="salePrice"
+                                value={formData.salePrice}
+                                onChange={handleChange}
                                 placeholder="비워두면 정가와 동일"
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                            />
                         </div>
                     </div>
 
                     {/* Stock */}
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px' }}>재고 수량</label>
-                        <input type="number" name="stock" value={formData.stock} onChange={handleChange} required 
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            <Package size={18} color="var(--accent-primary)" /> 재고 수량
+                        </label>
+                        <input
+                            type="number"
+                            name="stock"
+                            value={formData.stock}
+                            onChange={handleChange}
+                            required
+                            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                        />
                     </div>
 
                     {/* Image URL */}
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px' }}>이미지 URL</label>
-                        <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="https://..."
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            <ImageIcon size={18} color="var(--accent-primary)" /> 이미지 URL
+                        </label>
+                        <input
+                            name="imageUrl"
+                            value={formData.imageUrl}
+                            onChange={handleChange}
+                            placeholder="https://..."
+                            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
+                        />
+                        {formData.imageUrl && (
+                            <div style={{ marginTop: '10px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                                <img src={formData.imageUrl} alt="Preview" style={{ width: '100%', height: '200px', objectFit: 'cover' }} onError={(e) => e.target.style.display = 'none'} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Description */}
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px' }}>상세 설명</label>
-                        <textarea name="description" value={formData.description} onChange={handleChange} rows={5}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            <AlignLeft size={18} color="var(--accent-primary)" /> 상세 설명
+                        </label>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows={8}
+                            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem', resize: 'vertical', lineHeight: '1.6' }}
+                        />
                     </div>
 
-                    <button type="submit" className="btn btn-primary" disabled={isLoading} style={{ marginTop: '20px', padding: '15px' }}>
-                        {isLoading ? '수정 중...' : '상품 정보 수정하기'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+                        <button type="button" onClick={() => navigate(-1)} className="btn btn-outline" style={{ flex: 1, padding: '18px', fontSize: '1.1rem', borderRadius: '12px' }}>
+                            취소
+                        </button>
+                        <button type="submit" className="btn btn-primary" disabled={isLoading} style={{ flex: 2, padding: '18px', fontSize: '1.1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                            {isLoading ? '저장 중...' : (<><Save size={20} /> 변경사항 저장</>)}
+                        </button>
+                    </div>
+
+                    {errorMessage && (
+                        <div style={{ padding: '15px', color: '#ff4444', background: '#ffebee', borderRadius: '12px', textAlign: 'center', fontWeight: '600' }}>
+                            {errorMessage}
+                        </div>
+                    )}
                 </div>
             </form>
         </div>

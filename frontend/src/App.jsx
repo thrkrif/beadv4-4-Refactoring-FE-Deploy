@@ -16,6 +16,7 @@ import OrderSuccessPage from './pages/OrderPage/Success';
 import PaymentSuccessPage from './pages/PaymentPage/Success';
 import PaymentFailPage from './pages/PaymentPage/Fail';
 import MyPage from './pages/MyPage/Page';
+import OrderDetailPage from './pages/OrderPage/OrderDetailPage';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/payment/fail" element={<PaymentFailPage />} />
           <Route path="/payment/:orderId" element={<PaymentPage />} />
           <Route path="/settlement" element={<SettlementPage />} />
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route path="/mypage" element={<MyPage />} />
         </Route>
       </Routes>

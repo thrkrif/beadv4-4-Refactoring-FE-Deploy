@@ -35,7 +35,7 @@ const productApi = {
      * POST /api/v1/products
      */
     createProduct: async (productData) => {
-        return apiClient.post('/api/v1/products', productData);
+        return apiClient.post('/api/v1/products/create', productData);
     },
 
     /**
