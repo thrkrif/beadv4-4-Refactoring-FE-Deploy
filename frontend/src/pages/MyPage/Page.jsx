@@ -5,8 +5,18 @@ import orderApi from '../../services/api/orderApi';
 import paymentApi from '../../services/api/paymentApi';
 import productApi from '../../services/api/productApi';
 import settlementApi from '../../services/api/settlementApi';
+import WithdrawalModal from '../../components/payment/WithdrawalModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { ShoppingBag, Wallet, History, Package, ArrowRight, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { ShoppingBag, Wallet, History, Package, TrendingUp, DollarSign, Calendar, ChevronRight } from 'lucide-react';
+
+const pad2 = (v) => String(v).padStart(2, '0');
+const toLocalIsoDate = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+const toLocalYearMonth = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+const toArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.data)) return value.data;
+    return [];
+};
 
 const MyPage = () => {
     const navigate = useNavigate();
@@ -15,57 +25,102 @@ const MyPage = () => {
     const [orders, setOrders] = useState([]);
     const [walletInfo, setWalletInfo] = useState(null);
     const [financialLogs, setFinancialLogs] = useState([]);
+    const [paymentLogs, setPaymentLogs] = useState([]);
     const [myProducts, setMyProducts] = useState([]);
-    const [settlements, setSettlements] = useState([]);
+    const [monthlySettlements, setMonthlySettlements] = useState([]);
+    const [dailySettlementItems, setDailySettlementItems] = useState([]);
+    const [monthlyTarget, setMonthlyTarget] = useState(toLocalYearMonth(new Date()));
+    const [dailyTarget, setDailyTarget] = useState(toLocalIsoDate(new Date()));
+    const [isSettlementLoading, setIsSettlementLoading] = useState(false);
+    const [settlementError, setSettlementError] = useState('');
     const [loading, setLoading] = useState(true);
     const [bankInfo, setBankInfo] = useState({ bankCode: '', accountNumber: '', accountHolder: '' });
+    const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
 
     const isSeller = user?.role === 'SELLER';
 
     const fetchFinanceData = async (memberId) => {
-        console.log('🔄 Fetching Financial Data for member:', memberId);
-        
-        // Always fetch wallet and logs for everyone
         const fetchWallet = async () => {
-            try { return await paymentApi.getWallet(memberId); } 
+            try { return await paymentApi.getWallet(memberId); }
             catch (e) { console.error('Wallet fetch failed:', e); return null; }
         };
         const fetchWLogs = async () => {
             try { return await paymentApi.getBalanceLogs(); }
-            catch (e) { console.error('Balance logs fetch failed:', e); return { walletLog: [] }; }
+            catch (e) { console.error('Balance logs fetch failed:', e); return { balanceLog: [] }; }
         };
         const fetchRLogs = async () => {
             try { return await paymentApi.getRevenueLogs(); }
             catch (e) { console.error('Revenue logs fetch failed:', e); return { revenueLog: [] }; }
         };
-
-        // Conditional fetches for sellers in seller-center tab
-        const fetchPayouts = async () => {
-            if (!isSeller || activeTab !== 'seller-center') return [];
-            try { return await settlementApi.getSettlementHistory(); }
-            catch (e) { console.error('Payouts fetch failed:', e); return []; }
+        const fetchPLogs = async () => {
+            try { return await paymentApi.getPaymentLogs(); }
+            catch (e) { console.error('Payment logs fetch failed:', e); return { paymentLog: [] }; }
         };
+
         const fetchMyProducts = async () => {
             if (!isSeller || activeTab !== 'seller-center') return { content: [] };
             try { return await productApi.getMyProducts(); }
             catch (e) { console.error('My products fetch failed:', e); return { content: [] }; }
         };
 
-        const [wallet, wLogs, rLogs, payouts, productsRes] = await Promise.all([
-            fetchWallet(), fetchWLogs(), fetchRLogs(), fetchPayouts(), fetchMyProducts()
+        const [wallet, wLogs, rLogs, pLogs, productsRes] = await Promise.all([
+            fetchWallet(), fetchWLogs(), fetchRLogs(), fetchPLogs(), fetchMyProducts()
         ]);
 
         if (wallet) setWalletInfo(wallet);
-        
+
+        const normalizedWalletLogs = Array.isArray(wLogs)
+            ? wLogs
+            : (wLogs?.walletLog || wLogs?.balanceLog || wLogs?.data?.walletLog || wLogs?.data?.balanceLog || []);
+        const normalizedRevenueLogs = Array.isArray(rLogs)
+            ? rLogs
+            : (rLogs?.revenueLog || rLogs?.data?.revenueLog || []);
+
         const combinedLogs = [
-            ...(wLogs?.walletLog || []),
-            ...(rLogs?.revenueLog || [])
+            ...normalizedWalletLogs,
+            ...normalizedRevenueLogs
         ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
+
         setFinancialLogs(combinedLogs);
+        const normalizedPaymentLogs = Array.isArray(pLogs)
+            ? pLogs
+            : (pLogs?.paymentLog || pLogs?.data?.paymentLog || []);
+        setPaymentLogs(normalizedPaymentLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         if (activeTab === 'seller-center') {
-            setSettlements(payouts || []);
-            setMyProducts(productsRes?.content || []);
+            const normalizedProducts = Array.isArray(productsRes)
+                ? productsRes
+                : (productsRes?.content || productsRes?.data?.content || []);
+            setMyProducts(normalizedProducts);
+        }
+    };
+
+    const fetchMonthlySettlements = async (sellerId, targetMonth) => {
+        setIsSettlementLoading(true);
+        setSettlementError('');
+        try {
+            const response = await settlementApi.getMonthlySummary({ sellerId, targetMonth });
+            setMonthlySettlements(toArray(response));
+        } catch (err) {
+            console.error('Monthly settlement query failed:', err);
+            setMonthlySettlements([]);
+            setSettlementError('월별 정산 내역 조회에 실패했습니다.');
+        } finally {
+            setIsSettlementLoading(false);
+        }
+    };
+
+    const fetchDailySettlementItems = async (sellerId, targetDate) => {
+        setIsSettlementLoading(true);
+        setSettlementError('');
+        try {
+            const response = await settlementApi.getDailyItems({ sellerId, targetDate });
+            setDailySettlementItems(toArray(response));
+        } catch (err) {
+            console.error('Daily settlement detail query failed:', err);
+            setDailySettlementItems([]);
+            setSettlementError('일별 정산 상세 조회에 실패했습니다.');
+        } finally {
+            setIsSettlementLoading(false);
         }
     };
 
@@ -74,17 +129,13 @@ const MyPage = () => {
             setLoading(true);
             try {
                 const currentUser = await refresh();
-                
-                // Fetch orders with safety catch
                 try {
                     const orderData = await orderApi.getMyOrders();
                     setOrders(orderData || []);
                 } catch (orderErr) {
-                    console.warn('Orders fetch failed (likely endpoint missing):', orderErr);
                     setOrders([]);
                 }
-                
-                // Always fetch financial data for any user
+
                 if (currentUser?.memberId) {
                     await fetchFinanceData(currentUser.memberId);
                 }
@@ -97,10 +148,13 @@ const MyPage = () => {
         if (authApi.getAccessToken()) initMypage();
     }, []);
 
-    // Handle tab-specific data fetching
     useEffect(() => {
         if (user?.memberId) {
             fetchFinanceData(user.memberId);
+            if (isSeller && activeTab === 'seller-center') {
+                fetchMonthlySettlements(user.memberId, monthlyTarget);
+                fetchDailySettlementItems(user.memberId, dailyTarget);
+            }
         }
     }, [activeTab, isSeller, user?.memberId]);
 
@@ -123,20 +177,19 @@ const MyPage = () => {
             alert('상품이 삭제되었습니다.');
             fetchFinanceData(user.memberId);
         } catch (err) {
-            console.error('Delete error:', err);
             alert('상품 삭제에 실패했습니다.');
         }
     };
 
     const getStatusBadge = (state) => {
         const styles = {
-            PAYMENT_COMPLETED: { bg: 'rgba(0, 229, 255, 0.1)', color: '#00E5FF', text: '결제완료' },
-            PENDING_PAYMENT: { bg: 'rgba(255, 171, 0, 0.1)', color: '#FFAB00', text: '결제대기' },
-            CANCELLED: { bg: 'rgba(255, 64, 129, 0.1)', color: '#FF4081', text: '취소됨' },
-            PREPARING: { bg: 'rgba(124, 77, 255, 0.1)', color: '#7C4DFF', text: '배송준비' }
+            PAYMENT_COMPLETED: { bg: '#e3f2fd', color: '#1e88e5', text: '결제완료' },
+            PENDING_PAYMENT: { bg: '#fff3e0', color: '#fb8c00', text: '결제대기' },
+            CANCELLED: { bg: '#ffebee', color: '#e53935', text: '취소됨' },
+            PREPARING: { bg: '#f3e5f5', color: '#8e24aa', text: '배송준비' }
         };
-        const style = styles[state] || { bg: 'rgba(255,255,255,0.1)', color: '#ccc', text: state };
-        return <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', backgroundColor: style.bg, color: style.color }}>{style.text}</span>;
+        const style = styles[state] || { bg: '#f5f5f5', color: '#757575', text: state };
+        return <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: style.bg, color: style.color }}>{style.text}</span>;
     };
 
     const handleLogout = () => {
@@ -144,90 +197,130 @@ const MyPage = () => {
         navigate('/login');
     };
 
+    const resolveOrderId = (order) => {
+        return order?.orderId ?? order?.id ?? order?.order_id ?? null;
+    };
+
+    const handleOrderDetailClick = (order) => {
+        const resolvedOrderId = resolveOrderId(order);
+        if (!resolvedOrderId) {
+            alert('주문 상세 정보를 찾을 수 없습니다. 잠시 후 다시 시도해주세요.');
+            return;
+        }
+        navigate(`/orders/${resolvedOrderId}`);
+    };
+
+    const handleMonthlySettlementSearch = async () => {
+        if (!user?.memberId) return;
+        await fetchMonthlySettlements(user.memberId, monthlyTarget);
+    };
+
+    const handleDailySettlementSearch = async () => {
+        if (!user?.memberId) return;
+        await fetchDailySettlementItems(user.memberId, dailyTarget);
+    };
+
+    const monthlyTotalPayout = monthlySettlements.reduce((sum, row) => sum + (row.totalPayoutAmount || 0), 0);
+    const monthlyTotalPayment = monthlySettlements.reduce((sum, row) => sum + (row.totalPaymentAmount || 0), 0);
+    const monthlyTotalFee = monthlySettlements.reduce((sum, row) => sum + (row.totalFeeAmount || 0), 0);
+
+    const settlementStatusStyle = (status) => {
+        if (status === 'COMPLETED') return { bg: '#e8f5e9', color: '#2e7d32', label: '완료' };
+        if (status === 'PENDING') return { bg: '#fff3e0', color: '#ef6c00', label: '대기' };
+        return { bg: '#f5f5f5', color: '#616161', label: status || 'UNKNOWN' };
+    };
+
     return (
-        <div className="container" style={{ padding: '40px 20px', maxWidth: '1000px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '1000px' }}>
+            {/* Header Area */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '40px' }}>
                 <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '5px' }}>마이페이지</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Welcome back, <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>User #{user?.memberId}</span></p>
+                    <h1 style={{ fontSize: '2.2rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-primary)', letterSpacing: '-1px' }}>마이페이지</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem' }}>
+                        반가워요, <span style={{ color: 'var(--text-primary)', fontWeight: '700' }}>{user?.name || user?.username || user?.nickname || user?.memberName || '회원'}</span>님!
+                        {isSeller && <span style={{ marginLeft: '10px', padding: '4px 10px', background: 'var(--accent-primary)', color: '#fff', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' }}>SELLER</span>}
+                    </p>
                 </div>
-                <button onClick={handleLogout} className="btn-outline" style={{ padding: '8px 20px', fontSize: '0.9rem' }}>로그아웃</button>
+                <button
+                    onClick={handleLogout}
+                    className="btn btn-outline"
+                    style={{ padding: '8px 24px', fontSize: '0.9rem', borderRadius: '30px' }}
+                >
+                    로그아웃
+                </button>
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '25px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '30px' }}>
-                <button 
-                    onClick={() => setActiveTab('orders')}
-                    style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'orders' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'orders' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'orders' ? '700' : '500', transition: 'all 0.2s' }}
-                >
-                    내 주문 내역
-                </button>
-                <button 
-                    onClick={() => setActiveTab('wallet')}
-                    style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'wallet' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'wallet' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'wallet' ? '700' : '500', transition: 'all 0.2s' }}
-                >
-                    내 지갑
-                </button>
-                {isSeller && (
-                    <button 
-                        onClick={() => setActiveTab('seller-center')}
-                        style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'seller-center' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'seller-center' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer', fontWeight: activeTab === 'seller-center' ? '700' : '500', transition: 'all 0.2s' }}
+            <div style={{ display: 'flex', gap: '30px', borderBottom: '2px solid var(--border-subtle)', marginBottom: '40px' }}>
+                {['orders', 'wallet', isSeller ? 'seller-center' : 'be-seller'].filter(Boolean).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        style={{
+                            padding: '15px 0',
+                            fontSize: '1.1rem',
+                            background: 'none',
+                            border: 'none',
+                            color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
+                            fontWeight: activeTab === tab ? '700' : '500',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            marginBottom: '-2px',
+                            borderBottom: activeTab === tab ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                            transition: 'color 0.2s'
+                        }}
                     >
-                        판매자 센터
+                        {tab === 'orders' ? '주문 내역' :
+                            tab === 'wallet' ? '내 지갑' :
+                                tab === 'seller-center' ? '판매자 센터' : '판매자 등록'}
                     </button>
-                )}
-                {!isSeller && (
-                    <button 
-                        onClick={() => setActiveTab('be-seller')}
-                        style={{ padding: '15px 5px', fontSize: '1.05rem', background: 'none', border: 'none', color: activeTab === 'be-seller' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderBottom: activeTab === 'be-seller' ? '2px solid var(--accent-primary)' : 'none', cursor: 'pointer' }}
-                    >
-                        판매자 등록
-                    </button>
-                )}
+                ))}
             </div>
 
             {loading ? (
-                <div style={{ padding: '100px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>시크릿 데이터를 불러오는 중...</div>
+                <div style={{ padding: '100px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>정보를 불러오는 중입니다...</div>
             ) : (
-                <div className="tab-content" style={{ animation: 'fadeIn 0.4s ease' }}>
-                    {/* Purchase History */}
+                <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
+                    {/* Orders Tab */}
                     {activeTab === 'orders' && (
                         <div style={{ display: 'grid', gap: '20px' }}>
                             {orders.length === 0 ? (
-                                <div className="card" style={{ padding: '80px 20px', textAlign: 'center' }}>
-                                    <ShoppingBag size={56} style={{ marginBottom: '20px', opacity: 0.2, color: 'var(--accent-primary)' }} />
-                                    <h3 style={{ marginBottom: '10px' }}>주문 내역이 비어있어요!</h3>
-                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>취향에 맞는 키보드를 찾아보세요.</p>
-                                    <button onClick={() => navigate('/products')} className="btn-primary" style={{ padding: '12px 30px' }}>둘러보기</button>
+                                <div className="card" style={{ padding: '100px 20px', textAlign: 'center', boxShadow: 'none', background: 'var(--bg-secondary)' }}>
+                                    <ShoppingBag size={48} style={{ marginBottom: '20px', opacity: 0.3, color: 'var(--text-primary)' }} />
+                                    <h3 style={{ marginBottom: '10px', color: 'var(--text-primary)' }}>주문 내역이 없습니다</h3>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>마음에 드는 상품을 찾아보세요!</p>
+                                    <button onClick={() => navigate('/products')} className="btn btn-primary" style={{ padding: '12px 30px', borderRadius: '30px' }}>상품 둘러보기</button>
                                 </div>
                             ) : (
                                 orders.map(order => {
+                                    const resolvedOrderId = resolveOrderId(order);
                                     const representativeItem = order.items?.[0];
                                     const othersCount = (order.items?.length || 0) - 1;
-                                    const representativeName = representativeItem 
+                                    const representativeName = representativeItem
                                         ? `${representativeItem.productName}${othersCount > 0 ? ` 외 ${othersCount}건` : ''}`
                                         : '상품 정보 없음';
 
                                     return (
-                                        <div key={order.orderId} className="card" style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s', cursor: 'default' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>{new Date(order.createdAt).toLocaleDateString()}</span>
-                                                    {getStatusBadge(order.state)}
+                                        <div key={resolvedOrderId || order.orderNumber} className="card" style={{ padding: '30px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{new Date(order.createdAt).toLocaleDateString()}</span>
+                                                        {getStatusBadge(order.state)}
+                                                    </div>
+                                                    <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>{representativeName}</h3>
                                                 </div>
-                                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px' }}>{representativeName}</h3>
-                                                <div style={{ display: 'flex', gap: '15px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                                    <span>No. {order.orderNumber}</span>
-                                                    <span>|</span>
-                                                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{order.totalSalePrice.toLocaleString()}원</span>
-                                                </div>
+                                                <button onClick={() => handleOrderDetailClick(order)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    상세보기 <ChevronRight size={16} />
+                                                </button>
                                             </div>
-                                            <div style={{ textAlign: 'right', minWidth: '150px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', color: 'var(--accent-primary)', fontSize: '0.9rem', marginBottom: '12px', fontWeight: '600' }}>
-                                                    <Package size={16} />
-                                                    <span>{order.state === 'PAYMENT_COMPLETED' ? '배송 준비 중' : '주문 확인'}</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)' }}>
+                                                <div style={{ display: 'flex', gap: '20px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                    <span>주문번호 {order.orderNumber}</span>
                                                 </div>
-                                                <button className="btn btn-outline" style={{ padding: '6px 15px', fontSize: '0.8rem' }} onClick={() => alert('상세조회 기능은 준비 중입니다.')}>상세 조회</button>
+                                                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                                    {order.totalSalePrice.toLocaleString()}원
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -236,43 +329,84 @@ const MyPage = () => {
                         </div>
                     )}
 
-                    {/* Integrated Wallet Tab - For Everyone */}
+                    {/* Wallet Tab */}
                     {activeTab === 'wallet' && (
                         <div style={{ display: 'grid', gap: '30px' }}>
-                            <div className="card" style={{ padding: '30px', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
-                                <div style={{ position: 'relative', zIndex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', color: 'var(--accent-primary)' }}>
-                                        <Wallet size={24} />
-                                        <span style={{ fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Available Balance</span>
+                            <div className="card" style={{ padding: '28px 30px', borderRadius: '16px', background: '#fff', border: '1px solid #dff4f1', boxShadow: '0 10px 24px rgba(0, 196, 180, 0.08)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
+                                        <Wallet size={18} />
+                                        <span style={{ fontSize: '0.92rem', fontWeight: 600 }}>사용 가능한 잔액</span>
                                     </div>
-                                    <h2 style={{ fontSize: '2.5rem', fontWeight: '900', marginBottom: '5px' }}>{walletInfo?.balance?.toLocaleString() || 0}원</h2>
-                                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>즉시 출금 및 상품 구매에 사용 가능한 예치금입니다.</p>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '7px 12px', borderRadius: '999px', color: '#087f76', background: 'rgba(0,196,180,0.12)', border: '1px solid rgba(0,196,180,0.28)' }}>
+                                        실시간 잔액
+                                    </span>
                                 </div>
-                                <DollarSign size={80} style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05, transform: 'rotate(-15deg)' }} />
+
+                                <h2 style={{ fontSize: '3rem', lineHeight: 1.05, fontWeight: 900, letterSpacing: '-1.3px', color: 'var(--text-primary)', margin: '12px 0 0' }}>
+                                    {(walletInfo?.balance || 0).toLocaleString()}
+                                    <span style={{ fontSize: '1.6rem', marginLeft: '6px', fontWeight: 800 }}>원</span>
+                                </h2>
+
+                                <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
+                                    <span style={{ fontSize: '0.86rem' }}>정산/출금 요청 전 최신 금액으로 갱신됩니다.</span>
+                                    <span style={{ fontSize: '0.8rem' }}>{new Date().toLocaleDateString()} 기준</span>
+                                </div>
                             </div>
 
-                            <div className="card" style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ padding: '25px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>입출금 및 활동 내역</h3>
-                                    <button className="btn-icon"><History size={18} /></button>
+                            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                                <div style={{ padding: '25px 30px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <History size={18} /> 입출금로그
+                                    </h3>
                                 </div>
-                                <div style={{ maxHeight: '600px', overflowY: 'auto', padding: '10px' }}>
+                                <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
                                     {financialLogs.length === 0 ? (
-                                        <p style={{ padding: '50px', textAlign: 'center', color: 'var(--text-secondary)' }}>활동 내역이 없습니다.</p>
+                                        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>내역이 없습니다.</div>
                                     ) : (
                                         financialLogs.map((log, idx) => (
-                                            <div key={idx} style={{ padding: '15px 15px', borderBottom: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: log.eventType?.includes('입금') ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 64, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        {log.eventType?.includes('입금') ? <TrendingUp size={18} color="#4CAF50" /> : <Package size={18} color="#FF4081" />}
-                                                    </div>
-                                                    <div>
-                                                        <p style={{ fontWeight: '600', fontSize: '0.95rem', marginBottom: '3px' }}>{log.eventType === '판매수익_입금' ? '상품 판매 수익' : log.eventType ? log.eventType.replace('_', ' ') : '내역'}</p>
-                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{new Date(log.createdAt).toLocaleString()}</p>
-                                                    </div>
+                                            <div key={idx} style={{ padding: '20px 30px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <p style={{ fontWeight: '600', fontSize: '1rem', marginBottom: '6px', color: 'var(--text-primary)' }}>
+                                                        {log.eventType === '판매수익_입금' ? '상품 판매 수익' : log.eventType ? log.eventType.replace('_', ' ') : '내역'}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{new Date(log.createdAt).toLocaleString()}</p>
                                                 </div>
-                                                <span style={{ color: log.eventType?.includes('입금') ? '#4CAF50' : '#FF4081', fontWeight: '800', fontSize: '1.1rem' }}>
-                                                    {log.eventType?.includes('입금') ? '+' : '-'}{log.amount.toLocaleString()}
+                                                <span style={{
+                                                    color: log.eventType?.includes('입금') ? 'var(--accent-primary)' : 'var(--accent-secondary)',
+                                                    fontWeight: '700',
+                                                    fontSize: '1.1rem'
+                                                }}>
+                                                    {log.eventType?.includes('입금') ? '+' : '-'}{log.amount.toLocaleString()}원
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                                <div style={{ padding: '25px 30px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <DollarSign size={18} /> 결제 로그
+                                    </h3>
+                                </div>
+                                <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                                    {paymentLogs.length === 0 ? (
+                                        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>결제 로그가 없습니다.</div>
+                                    ) : (
+                                        paymentLogs.map((log, idx) => (
+                                            <div key={log.id ?? idx} style={{ padding: '20px 30px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <p style={{ fontWeight: '600', fontSize: '1rem', marginBottom: '6px', color: 'var(--text-primary)' }}>
+                                                        주문번호 {log.orderId}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                        상태: {log.paymentStatus} · {new Date(log.createdAt).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <span style={{ color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.1rem' }}>
+                                                    {(log.amount || 0).toLocaleString()}원
                                                 </span>
                                             </div>
                                         ))
@@ -282,148 +416,239 @@ const MyPage = () => {
                         </div>
                     )}
 
-                    {/* Integrated Seller Dashboard - Refined Vertical Stack Layout */}
+                    {/* Seller Center */}
                     {isSeller && activeTab === 'seller-center' && (
                         <div style={{ display: 'grid', gap: '40px' }}>
-                            
-                            {/* Top Summary Stats */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                                <div className="card" style={{ padding: '25px', display: 'flex', alignItems: 'center', gap: '20px', background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.1)' }}>
-                                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <TrendingUp size={24} color="black" />
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                                <div className="card" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                        <div>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>총 판매 수익</p>
+                                            <h3 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{walletInfo?.revenue?.toLocaleString() || 0}원</h3>
+                                        </div>
+                                        <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px' }}>
+                                            <TrendingUp size={24} color="var(--accent-primary)" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>총 판매 수익</p>
-                                        <h3 style={{ fontSize: '1.6rem', fontWeight: '800' }}>{walletInfo?.revenue?.toLocaleString() || 0}원</h3>
-                                    </div>
+                                    <button
+                                        onClick={() => setIsWithdrawalModalOpen(true)}
+                                        className="btn btn-primary"
+                                        style={{ width: '100%' }}
+                                    >
+                                        출금 신청하기
+                                    </button>
                                 </div>
-                                <div className="card" style={{ padding: '25px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Package size={24} color="var(--accent-primary)" />
+                                <div className="card" style={{ padding: '30px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Package size={28} color="var(--accent-primary)" />
                                     </div>
                                     <div>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>등록된 상품</p>
-                                        <h3 style={{ fontSize: '1.6rem', fontWeight: '800' }}>{myProducts.length}개</h3>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>등록된 상품</p>
+                                        <h3 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{myProducts.length}개</h3>
+                                        <button
+                                            onClick={() => navigate('/products/new')}
+                                            style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: '600', padding: 0, marginTop: '5px', cursor: 'pointer', fontSize: '0.9rem' }}
+                                        >
+                                            + 새 상품 등록
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* 1. Product Management (Full Width) */}
-                            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                                <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>내 상품 관리</h3>
-                                    <button onClick={() => navigate('/products/new')} className="btn btn-primary" style={{ padding: '6px 15px', fontSize: '0.85rem' }}>+ 상품 등록</button>
+                            {/* Product List */}
+                            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <div style={{ padding: '25px 30px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>내 상품 관리</h3>
                                 </div>
-                                <div style={{ padding: '20px' }}>
+                                <div style={{ padding: '30px' }}>
                                     {myProducts.length === 0 ? (
-                                        <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                            등록된 상품이 없습니다. 첫 상품을 등록해보세요!
-                                        </div>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>등록된 상품이 없습니다.</div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '15px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
                                             {myProducts.map(product => (
-                                                <div key={product.id} style={{ padding: '15px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                <div key={product.id} style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)', background: '#fff', boxShadow: 'var(--shadow-card)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
                                                         {product.imageUrl ? (
-                                                            <img src={product.imageUrl} alt={product.name} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
+                                                            <img src={product.imageUrl} alt={product.name} style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover' }} />
                                                         ) : (
-                                                            <div style={{ width: '50px', height: '50px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <Package size={20} color="var(--text-secondary)" />
-                                                            </div>
+                                                            <div style={{ width: '60px', height: '60px', borderRadius: '10px', background: 'var(--bg-secondary)' }} />
                                                         )}
+                                                        <div style={{ flex: 1 }}>
+                                                            <h4 style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)' }}>{product.name}</h4>
+                                                            <p style={{ color: 'var(--accent-primary)', fontWeight: '700' }}>{product.price.toLocaleString()}원</p>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                                        <button onClick={() => navigate(`/products/${product.id}/edit`)} className="btn btn-outline" style={{ flex: 1, padding: '8px', fontSize: '0.85rem' }}>수정</button>
+                                                        <button onClick={() => handleDeleteProduct(product.id)} className="btn btn-outline" style={{ flex: 1, padding: '8px', fontSize: '0.85rem', color: 'var(--accent-secondary)', borderColor: 'rgba(255,107,107,0.3)' }}>삭제</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Settlements */}
+                            <div style={{ display: 'grid', gap: '20px' }}>
+                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    <div style={{ padding: '25px 30px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                                        <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Calendar size={18} /> 월별 정산 조회
+                                        </h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <input
+                                                type="month"
+                                                value={monthlyTarget}
+                                                onChange={(e) => setMonthlyTarget(e.target.value)}
+                                                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }}
+                                            />
+                                            <button className="btn btn-primary" style={{ padding: '10px 16px' }} onClick={handleMonthlySettlementSearch}>
+                                                조회
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{ padding: '24px 30px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                                            <div style={{ padding: '14px', borderRadius: '10px', background: 'var(--bg-secondary)' }}>
+                                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>총 정산 예정액</p>
+                                                <p style={{ margin: '6px 0 0', fontWeight: 800, color: 'var(--text-primary)' }}>{monthlyTotalPayout.toLocaleString()}원</p>
+                                            </div>
+                                            <div style={{ padding: '14px', borderRadius: '10px', background: 'var(--bg-secondary)' }}>
+                                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>총 결제금액</p>
+                                                <p style={{ margin: '6px 0 0', fontWeight: 800, color: 'var(--text-primary)' }}>{monthlyTotalPayment.toLocaleString()}원</p>
+                                            </div>
+                                            <div style={{ padding: '14px', borderRadius: '10px', background: 'var(--bg-secondary)' }}>
+                                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>총 수수료</p>
+                                                <p style={{ margin: '6px 0 0', fontWeight: 800, color: 'var(--text-primary)' }}>{monthlyTotalFee.toLocaleString()}원</p>
+                                            </div>
+                                        </div>
+
+                                        {monthlySettlements.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '16px 0' }}>해당 월 정산 내역이 없습니다.</div>
+                                        ) : (
+                                            <div style={{ overflowX: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
+                                                    <thead>
+                                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                            <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>대상월</th>
+                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>건수</th>
+                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>결제금액</th>
+                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>수수료</th>
+                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>정산금액</th>
+                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>상태</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {monthlySettlements.map((row) => {
+                                                            const statusStyle = settlementStatusStyle(row.status);
+                                                            return (
+                                                                <tr key={row.monthlySettlementId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                                    <td style={{ padding: '14px 0', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                                                        {`${String(row.targetYearMonth).slice(0, 4)}-${String(row.targetYearMonth).slice(4, 6)}`}
+                                                                    </td>
+                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalCount || 0).toLocaleString()}</td>
+                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalPaymentAmount || 0).toLocaleString()}원</td>
+                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalFeeAmount || 0).toLocaleString()}원</td>
+                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 700 }}>{(row.totalPayoutAmount || 0).toLocaleString()}원</td>
+                                                                    <td style={{ padding: '14px 0', textAlign: 'right' }}>
+                                                                        <span style={{ padding: '5px 11px', borderRadius: '999px', background: statusStyle.bg, color: statusStyle.color, fontSize: '0.75rem', fontWeight: 700 }}>
+                                                                            {statusStyle.label}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    <div style={{ padding: '25px 30px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                                        <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <History size={18} /> 일별 정산 상세 조회
+                                        </h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <input
+                                                type="date"
+                                                value={dailyTarget}
+                                                onChange={(e) => setDailyTarget(e.target.value)}
+                                                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }}
+                                            />
+                                            <button className="btn btn-primary" style={{ padding: '10px 16px' }} onClick={handleDailySettlementSearch}>
+                                                조회
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{ padding: '24px 30px' }}>
+                                        {dailySettlementItems.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '16px 0' }}>해당 일자 정산 상세 내역이 없습니다.</div>
+                                        ) : (
+                                            <div style={{ display: 'grid', gap: '12px' }}>
+                                                {dailySettlementItems.map((item) => (
+                                                    <div key={item.dailySettlementItemId} style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px 18px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                                                         <div>
-                                                            <p style={{ fontWeight: '600', fontSize: '0.95rem', marginBottom: '4px' }}>{product.name}</p>
-                                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-primary)', fontWeight: '700' }}>{product.price.toLocaleString()}원</p>
+                                                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '5px' }}>{item.productName}</div>
+                                                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>상품 ID {item.productId} · 수량 {item.finalQuantity}개</div>
+                                                        </div>
+                                                        <div style={{ textAlign: 'right' }}>
+                                                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{(item.finalAmount || 0).toLocaleString()}원</div>
+                                                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{item.targetDate}</div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                                        <button onClick={() => navigate(`/products/${product.id}/edit`)} className="btn btn-outline" style={{ padding: '5px 12px', fontSize: '0.75rem' }}>수정</button>
-                                                        <button onClick={() => handleDeleteProduct(product.id)} className="btn btn-outline" style={{ padding: '5px 12px', fontSize: '0.75rem', color: '#FF4081', borderColor: 'rgba(255, 64, 129, 0.2)' }}>삭제</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* 2. Settlement Notice (Banner) */}
-                            <div style={{ background: 'rgba(255, 171, 0, 0.05)', padding: '25px', borderRadius: '20px', border: '1px solid rgba(255, 171, 0, 0.1)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
-                                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(255, 171, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Calendar size={22} color="#FFAB00" />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ color: '#FFAB00', marginBottom: '5px', fontWeight: '700' }}>데일리 정산 안내</h4>
-                                    <p style={{ fontSize: '0.9rem', color: '#FFAB00', opacity: 0.8 }}>
-                                        판매 수익금은 시스템 안정성을 위해 매일 자정 정산 프로세스가 완료된 후 업데이트됩니다.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* 3. Daily Settlements (Full Width / Bottom) */}
-                            <div className="card" style={{ padding: '0' }}>
-                                <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-subtle)' }}>
-                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>데일리 정산 내역</h3>
-                                </div>
-                                <div style={{ padding: '20px' }}>
-                                    {settlements.length === 0 ? (
-                                        <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                            <Calendar size={48} style={{ marginBottom: '15px', opacity: 0.1 }} />
-                                            <p style={{ fontSize: '0.9rem' }}>최근 완료된 정산 결과가 없습니다.</p>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                                            {settlements.map(s => (
-                                                <div key={s.id} style={{ padding: '20px', borderRadius: '14px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-subtle)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }}>
-                                                        <span style={{ fontWeight: '700', fontSize: '1.1rem' }}>{s.salesDate}</span>
-                                                        <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', background: s.status === 'COMPLETED' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 152, 0, 0.1)', color: s.status === 'COMPLETED' ? '#4CAF50' : '#FF9800' }}>{s.status}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                            <span style={{ color: 'var(--text-secondary)' }}>판매총액</span>
-                                                            <span>{s.totalAmount.toLocaleString()}원</span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600' }}>실제 정산금</span>
-                                                            <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--accent-primary)' }}>{s.payoutAmount.toLocaleString()}원</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                {(isSettlementLoading || settlementError) && (
+                                    <div style={{ color: settlementError ? 'var(--accent-secondary)' : 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'right' }}>
+                                        {isSettlementLoading ? '정산 내역 조회 중...' : settlementError}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/* Become Seller */}
+                    {/* Registration Tab */}
                     {!isSeller && activeTab === 'be-seller' && (
-                        <div className="card" style={{ padding: '50px 40px', maxWidth: '500px', margin: '30px auto' }}>
+                        <div className="card" style={{ padding: '50px 40px', maxWidth: '600px', margin: '40px auto' }}>
                             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                                <TrendingUp size={48} color="var(--accent-primary)" style={{ marginBottom: '20px' }} />
-                                <h2 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '10px' }}>판매자 권한 신청</h2>
-                                <p style={{ color: 'var(--text-secondary)' }}>당신의 멋진 키보드를 판매해보세요.</p>
+                                <TrendingUp size={60} color="var(--accent-primary)" style={{ marginBottom: '20px' }} />
+                                <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-primary)' }}>판매자 권한 신청</h2>
+                                <p style={{ color: 'var(--text-secondary)' }}>나만의 커스텀 키보드를 전 세계에 판매해보세요.</p>
                             </div>
-                            <form onSubmit={handleUpgradeToSeller} style={{ display: 'grid', gap: '22px' }}>
+                            <form onSubmit={handleUpgradeToSeller} style={{ display: 'grid', gap: '25px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.95rem', fontWeight: '600' }}>은행 코드</label>
-                                    <input placeholder="예: 004 (신한), 020 (우리)" value={bankInfo.bankCode} onChange={e => setBankInfo({...bankInfo, bankCode: e.target.value})} required style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--text-primary)' }}>은행 코드</label>
+                                    <input placeholder="예: 004 (신한)" value={bankInfo.bankCode} onChange={e => setBankInfo({ ...bankInfo, bankCode: e.target.value })} required style={{ width: '100%', padding: '15px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.95rem', fontWeight: '600' }}>계좌 번호</label>
-                                    <input placeholder="'-' 제외하고 입력" value={bankInfo.accountNumber} onChange={e => setBankInfo({...bankInfo, accountNumber: e.target.value})} required style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--text-primary)' }}>계좌 번호</label>
+                                    <input placeholder="하이픈(-) 제외" value={bankInfo.accountNumber} onChange={e => setBankInfo({ ...bankInfo, accountNumber: e.target.value })} required style={{ width: '100%', padding: '15px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.95rem', fontWeight: '600' }}>예금주 명</label>
-                                    <input placeholder="본인 성함" value={bankInfo.accountHolder} onChange={e => setBankInfo({...bankInfo, accountHolder: e.target.value})} required style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--text-primary)' }}>예금주</label>
+                                    <input placeholder="본인 실명" value={bankInfo.accountHolder} onChange={e => setBankInfo({ ...bankInfo, accountHolder: e.target.value })} required style={{ width: '100%', padding: '15px', borderRadius: '10px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
                                 </div>
-                                <button type="submit" className="btn-primary" style={{ marginTop: '10px', padding: '16px', fontWeight: 'bold', fontSize: '1.1rem' }}>신청 완료하기</button>
+                                <button type="submit" className="btn btn-primary" style={{ padding: '18px', fontSize: '1.1rem', marginTop: '10px' }}>신청서 제출</button>
                             </form>
                         </div>
                     )}
                 </div>
+            )}
+
+            {isWithdrawalModalOpen && (
+                <WithdrawalModal
+                    isOpen={isWithdrawalModalOpen}
+                    onClose={() => setIsWithdrawalModalOpen(false)}
+                    availableAmount={walletInfo?.revenue || 0}
+                    onSuccess={() => fetchFinanceData(user.memberId)}
+                />
             )}
         </div>
     );

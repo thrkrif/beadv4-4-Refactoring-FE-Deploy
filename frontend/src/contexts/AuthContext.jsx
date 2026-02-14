@@ -2,6 +2,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import authApi from '../services/api/authApi';
 
 const AuthContext = createContext(null);
+const USERNAME_STORAGE_KEY = 'username';
+
+const usernameFromEmail = (email) => {
+    if (!email || typeof email !== 'string') return null;
+    const localPart = email.split('@')[0]?.trim();
+    return localPart || null;
+};
+
+const resolveDisplayName = (res, fallbackEmail = null) =>
+    res?.name ||
+    res?.username ||
+    sessionStorage.getItem(USERNAME_STORAGE_KEY) ||
+    usernameFromEmail(fallbackEmail);
 
 export const AuthProvider = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,10 +30,14 @@ export const AuthProvider = ({ children }) => {
                     // 유저 정보 가져오기
                     const res = await authApi.getMe();
                     if (res.success) {
-                        setUser({ memberId: res.memberId, role: res.role });
+                        setUser({
+                            memberId: res.memberId,
+                            role: res.role,
+                            name: resolveDisplayName(res)
+                        });
                         setIsLoggedIn(true);
                     } else {
-                       throw new Error('User info fetch failed');
+                        throw new Error('User info fetch failed');
                     }
                 } catch (err) {
                     console.error('Session validation failed:', err);
@@ -47,7 +64,9 @@ export const AuthProvider = ({ children }) => {
             // 로그인 성공 시 바로 유저 정보 로딩
             const meRes = await authApi.getMe();
             if (meRes.success) {
-                setUser({ memberId: meRes.memberId, role: meRes.role });
+                const displayName = resolveDisplayName(meRes, email);
+                if (displayName) sessionStorage.setItem(USERNAME_STORAGE_KEY, displayName);
+                setUser({ memberId: meRes.memberId, role: meRes.role, name: displayName });
             }
             return { success: true };
         }
@@ -59,7 +78,9 @@ export const AuthProvider = ({ children }) => {
         try {
             const res = await authApi.getMe();
             if (res.success) {
-                const newUser = { memberId: res.memberId, role: res.role };
+                const displayName = resolveDisplayName(res);
+                if (displayName) sessionStorage.setItem(USERNAME_STORAGE_KEY, displayName);
+                const newUser = { memberId: res.memberId, role: res.role, name: displayName };
                 setUser(newUser);
                 return newUser;
             }
@@ -71,6 +92,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         authApi.clearTokens();
+        sessionStorage.removeItem(USERNAME_STORAGE_KEY);
         setIsLoggedIn(false);
         setUser(null);
     };

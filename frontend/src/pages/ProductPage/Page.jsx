@@ -1,9 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
+import reviewApi from '../../services/api/reviewApi';
 import ProductForm from './Form';
 import ProductItem from './components/ProductItem';
+
+const PAGE_SIZE = 12;
 
 const ProductPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -12,33 +15,120 @@ const ProductPage = () => {
     const keyword = searchParams.get('keyword');
 
     const [products, setProducts] = useState([]);
+    const [reviewSummaryMap, setReviewSummaryMap] = useState({});
     const [loading, setLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState(null);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const loadMoreRef = useRef(null);
+    const loadingMoreRef = useRef(false);
+    const isSearchMode = Boolean(keyword);
 
-    const fetchProducts = () => {
-        setLoading(true);
-        setError(null);
-        // Backend currently has no "Get All" endpoint and only supports KEYBOARD.
-        // So for "ALL" category, we fetch "KEYBOARD" products to show something.
-        const fetchMethod = (category === 'ALL' && !keyword)
-             ? productApi.getProducts('KEYBOARD')
-             : (keyword ? productApi.searchProducts(keyword) : productApi.getProducts(category));
-        fetchMethod.then(res => {
+    const fetchProducts = async ({ nextPage = 0, reset = false } = {}) => {
+        if (!reset && loadingMoreRef.current) return;
+
+        if (reset) {
+            setLoading(true);
+            setError(null);
+        } else {
+            loadingMoreRef.current = true;
+            setIsLoadingMore(true);
+        }
+
+        try {
+            // Backend currently has no "Get All" endpoint and only supports KEYBOARD.
+            // So for "ALL" category, we fetch "KEYBOARD" products to show something.
+            const targetCategory = category === 'ALL' ? 'KEYBOARD' : category;
+            const res = isSearchMode
+                ? await productApi.searchProducts(keyword)
+                : await productApi.getProducts(targetCategory, nextPage, PAGE_SIZE);
+
             // searchProducts returns List<ProductListResponse> (array)
             // getProducts returns Page<ProductListResponse> (object with content array)
             const content = Array.isArray(res) ? res : (res.content || []);
-            setProducts(content);
-            setLoading(false);
-        }).catch(err => {
+
+            const enrichedProducts = await Promise.all(
+                content.map(async (item) => {
+                    try {
+                        const detail = await productApi.getProductDetail(item.id);
+                        return {
+                            ...item,
+                            salePrice: detail?.price ?? item.salePrice ?? item.price
+                        };
+                    } catch (detailError) {
+                        console.error(`failed to fetch product detail: ${item.id}`, detailError);
+                        return item;
+                    }
+                })
+            );
+
+            const productIds = enrichedProducts.map((item) => item.id).filter(Boolean);
+            const summaryMap = await reviewApi.getProductReviewSummaryMap(productIds);
+
+            if (reset) {
+                setProducts(enrichedProducts);
+                setReviewSummaryMap(summaryMap || {});
+            } else {
+                setProducts((prev) => {
+                    const prevIds = new Set(prev.map((item) => String(item.id)));
+                    const appended = enrichedProducts.filter((item) => !prevIds.has(String(item.id)));
+                    return [...prev, ...appended];
+                });
+                setReviewSummaryMap((prev) => ({ ...prev, ...(summaryMap || {}) }));
+            }
+
+            if (isSearchMode) {
+                setPage(0);
+                setHasMore(false);
+            } else {
+                const isLastPage = Boolean(res?.last);
+                const totalPages = Number(res?.totalPages || 0);
+                const fallbackLast = content.length < PAGE_SIZE;
+                const resolvedLast = Number.isFinite(totalPages) && totalPages > 0
+                    ? nextPage + 1 >= totalPages
+                    : (res?.last !== undefined ? isLastPage : fallbackLast);
+                setHasMore(!resolvedLast);
+                setPage(nextPage);
+            }
+        } catch (err) {
             console.error(err);
             setError(err);
-            setLoading(false);
-        });
+        } finally {
+            if (reset) {
+                setLoading(false);
+            } else {
+                loadingMoreRef.current = false;
+                setIsLoadingMore(false);
+            }
+        }
     };
 
     useEffect(() => {
-        fetchProducts();
+        setProducts([]);
+        setReviewSummaryMap({});
+        setPage(0);
+        setHasMore(true);
+        fetchProducts({ nextPage: 0, reset: true });
     }, [category, keyword]);
+
+    useEffect(() => {
+        if (isSearchMode || !hasMore || loading || isLoadingMore || error) return;
+        const target = loadMoreRef.current;
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && !loadingMoreRef.current) {
+                    fetchProducts({ nextPage: page + 1, reset: false });
+                }
+            },
+            { root: null, rootMargin: '220px 0px', threshold: 0.01 }
+        );
+
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [page, hasMore, loading, isLoadingMore, isSearchMode, error]);
 
     const handleCategoryChange = (catId) => {
         setSearchParams({ category: catId });
@@ -69,11 +159,23 @@ const ProductPage = () => {
                         <button onClick={fetchProducts} className="btn btn-primary" style={{ marginTop: '10px' }}>다시 시도</button>
                     </div>
                 ) : (
-                    <div className="grid-cols-3">
-                        {products.map(product => (
-                            <ProductItem key={product.id} product={product} />
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid-cols-3">
+                            {products.map(product => (
+                                <ProductItem
+                                    key={product.id}
+                                    product={product}
+                                    reviewSummary={reviewSummaryMap[String(product.id)]}
+                                />
+                            ))}
+                        </div>
+
+                        {!isSearchMode && (
+                            <div ref={loadMoreRef} style={{ padding: '20px 0 10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                {isLoadingMore ? '상품을 더 불러오는 중...' : (hasMore ? '스크롤하면 더 불러옵니다.' : '모든 상품을 불러왔습니다.')}
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
         </div>

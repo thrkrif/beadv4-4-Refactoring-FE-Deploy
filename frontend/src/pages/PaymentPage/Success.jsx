@@ -28,7 +28,7 @@ const PaymentSuccessPage = () => {
 
         console.log(`💳 결제 승인 요청 시작: orderId=${orderId}, amount=${amount}`);
 
-        paymentApi.confirmPayment(paymentKey, orderId, amount)
+        paymentApi.confirmToss(paymentKey, orderId, amount)
             .then(res => {
                 setResult(res);
                 setLoading(false);
@@ -70,7 +70,7 @@ const PaymentSuccessPage = () => {
                     <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{Number(amount).toLocaleString()}원</span>
                 </div>
             </div>
-            
+
             <div style={{ marginTop: '40px', display: 'flex', gap: '15px', justifyContent: 'center' }}>
                 <Link to="/products" className="btn btn-outline">계속 쇼핑하기</Link>
                 <Link to="/" className="btn btn-primary">홈으로 이동</Link>

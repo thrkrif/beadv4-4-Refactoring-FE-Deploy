@@ -56,25 +56,30 @@ const OrderPage = () => {
 
             // 1. Create Order
             const response = await orderApi.createOrder(orderRequest);
-            const orderId = response.orderNumber || response.data?.orderNumber;
-            const amount = response.pgAmount // pgAmount
-            const orderName = `주문번호 ${orderId}`;
+            const orderPk = response.orderId ?? response.data?.orderId;
+            const orderNumber = response.orderNumber ?? response.data?.orderNumber;
+            const amount = Number(response.pgAmount ?? response.data?.pgAmount ?? 0);
+            const orderName = `주문번호 ${orderNumber}`;
+
+            if (!orderPk || !orderNumber) {
+                throw new Error('주문 생성 응답에 주문 식별값이 없습니다.');
+            }
 
             // 0원 결제 처리 (예치금으로 모두 결제된 경우)
             if (amount <= 0) {
                 alert('예치금으로 전액 결제되었습니다.');
-                navigate(`/payment/success?orderId=${orderId}&amount=0&paymentKey=INTERNAL_WALLET`);
+                navigate(`/payment/success?orderId=${orderNumber}&amount=0&paymentKey=INTERNAL_WALLET`);
                 return;
             }
 
-            // 2. Redirect to custom checkout endpoint as requested by collaborator
-            console.log('� Redirecting to custom checkout...', { orderId, amount });
-            
-            // Construct the simple redirect URL
-            const checkoutUrl = 'https://api.thock.site/checkout.html';
-            
-            window.location.href = checkoutUrl;
-            
+            navigate(`/payment/${orderPk}?amount=${amount}&orderNumber=${encodeURIComponent(String(orderNumber))}`, {
+                state: {
+                    amount: Number(amount),
+                    orderName,
+                    orderNumber: String(orderNumber)
+                }
+            });
+
         } catch (error) {
             console.error('❌ 주문 처리 중 에러:', error);
             alert(error.message || '주문 처리 중 오류가 발생했습니다.');
@@ -106,29 +111,29 @@ const OrderPage = () => {
                 </div>
 
                 {/* Delivery Info Form */}
-                <form onSubmit={handleSubmit} className="card" style={{ padding: '30px' }}>
+                <form onSubmit={handleSubmit} className="card" style={{ padding: '30px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                     <h3 style={{ marginBottom: '20px' }}>배송지 정보</h3>
-                    
+
                     <div style={{ display: 'grid', gap: '15px' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>우편번호</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>우편번호</label>
                             <input name="zipCode" value={formData.zipCode} onChange={handleChange} required placeholder="00000"
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>기본 주소</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>기본 주소</label>
                             <input name="baseAddress" value={formData.baseAddress} onChange={handleChange} required placeholder="서울시 강남구..."
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>상세 주소</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>상세 주소</label>
                             <input name="detailAddress" value={formData.detailAddress} onChange={handleChange} required placeholder="101호"
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'white' }} />
+                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                     </div>
 
                     <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '30px', padding: '15px', fontSize: '1.1rem' }}>
-                        결제하기
+                        주문하기
                     </button>
                 </form>
             </div>
