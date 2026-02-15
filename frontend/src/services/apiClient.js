@@ -20,7 +20,7 @@ class ApiClient {
         if (!refreshToken) throw new Error('No refresh token available');
 
         try {
-            const response = await fetch(`${this.baseURL}/refresh`, {
+            const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken })
@@ -67,9 +67,9 @@ class ApiClient {
             if (import.meta.env.DEV) {
                 console.log(`➡️ API 요청: ${options.method || 'GET'} ${url}`);
                 if (headers['Authorization']) {
-                   console.log(`🔑 Auth Token: ${headers['Authorization']}`);
+                    console.log(`🔑 Auth Token: ${headers['Authorization']}`);
                 } else {
-                   console.log('❌ No Auth Token sent');
+                    console.log('❌ No Auth Token sent');
                 }
             }
 

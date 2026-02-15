@@ -54,7 +54,7 @@ const LoginForm = () => {
                 <input
                     type="password"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => setPassword(e.target.value.toLowerCase())}
                     style={{
                         width: '100%', padding: '12px', borderRadius: '8px',
                         border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)',

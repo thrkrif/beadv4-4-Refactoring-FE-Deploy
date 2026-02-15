@@ -57,12 +57,12 @@ class AuthApi {
         try {
             const response = await apiClient.post('/api/v1/auth/refresh', { refreshToken });
             const newAccessToken = response.accessToken || response.data?.accessToken;
-            
+
             if (newAccessToken) {
                 sessionStorage.setItem('accessToken', newAccessToken);
                 return { success: true, data: response };
             }
-             
+
             return { success: false, error: { message: '토큰 갱신 응답 형식 오류' } };
         } catch (error) {
             console.error('토큰 갱신 에러:', error);
@@ -75,10 +75,11 @@ class AuthApi {
         try {
             const response = await apiClient.get('/api/v1/members/me');
             // response structure: { memberId: 1, role: 'USER' | 'SELLER' }
-            return { 
-                success: true, 
+            return {
+                success: true,
                 memberId: response.memberId,
-                role: response.role 
+                role: response.role,
+                name: response.name || response.username || response.memberName || response.nickname
             };
         } catch (error) {
             console.error('내 정보 조회 실패:', error);
