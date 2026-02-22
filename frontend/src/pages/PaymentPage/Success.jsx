@@ -14,9 +14,18 @@ const PaymentSuccessPage = () => {
     const paymentKey = searchParams.get('paymentKey');
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
+    const amountNumber = Number(amount || 0);
+    const hasAmountParam = amount !== null;
+    const isWalletPayment = paymentKey === 'INTERNAL_WALLET' || (hasAmountParam && !!orderId && amountNumber <= 0);
     const confirmed = useRef(false);
 
     useEffect(() => {
+        if (isWalletPayment) {
+            setResult({ paymentMethod: 'INTERNAL_WALLET' });
+            setLoading(false);
+            return;
+        }
+
         if (!paymentKey || !orderId || !amount) {
             setError('결제 정보가 부족합니다.');
             setLoading(false);
@@ -38,7 +47,7 @@ const PaymentSuccessPage = () => {
                 setError(err.message || '결제 승인 중 오류가 발생했습니다.');
                 setLoading(false);
             });
-    }, [paymentKey, orderId, amount]);
+    }, [paymentKey, orderId, amount, isWalletPayment]);
 
     if (loading) return <div className="container" style={{ padding: '50px', textAlign: 'center' }}>결제 승인 처리 중...</div>;
 
@@ -67,7 +76,7 @@ const PaymentSuccessPage = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>결제금액</span>
-                    <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{Number(amount).toLocaleString()}원</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{amountNumber.toLocaleString()}원</span>
                 </div>
             </div>
 
