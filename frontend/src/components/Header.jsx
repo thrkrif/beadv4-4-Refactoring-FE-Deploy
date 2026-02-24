@@ -31,9 +31,12 @@ const Header = () => {
             <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '80px' }}>
 
                 {/* Logo Section */}
-                <Link to="/" style={{ display: 'inline-grid', gap: '1px', color: 'var(--text-primary)', textDecoration: 'none', lineHeight: 1 }}>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.2px' }}>또각</span>
-                    <span style={{ fontSize: '1.35rem', fontWeight: 900, letterSpacing: '-0.3px' }}>THOCK</span>
+                <Link to="/" aria-label="또각 홈" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-primary)', textDecoration: 'none', lineHeight: 1 }}>
+                    <img
+                        src="/thock-logo.svg"
+                        alt="또각 THOCK"
+                        style={{ height: '50px', width: 'auto', display: 'block' }}
+                    />
                 </Link>
 
                 {/* Main Actions (User + Cart) */}
