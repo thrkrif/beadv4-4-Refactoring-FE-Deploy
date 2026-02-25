@@ -68,7 +68,7 @@ class ApiClient {
             if (import.meta.env.DEV) {
                 console.log(`➡️ API 요청: ${options.method || 'GET'} ${url}`);
                 if (headers['Authorization']) {
-                    console.log(`🔑 Auth Token: ${headers['Authorization']}`);
+                    console.log('🔑 Auth Token attached');
                 } else {
                     console.log('❌ No Auth Token sent');
                 }

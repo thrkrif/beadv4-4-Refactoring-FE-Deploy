@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import cartApi from '../../services/api/cartApi';
 import orderApi from '../../services/api/orderApi';
 
 const OrderPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [cartData, setCartData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({
@@ -15,13 +16,34 @@ const OrderPage = () => {
     });
 
     useEffect(() => {
+        const selectedCartItemIds = Array.isArray(location.state?.selectedCartItemIds)
+            ? location.state.selectedCartItemIds
+                .map(id => Number(id))
+                .filter(id => Number.isFinite(id))
+            : [];
+
         // Fetch cart items to display what's being ordered
         cartApi.getCart().then(res => {
-            // Mapping backend response
             const data = res;
+            const allItems = data.items || [];
+            const selectedItems = selectedCartItemIds.length > 0
+                ? allItems.filter(item => selectedCartItemIds.includes(item.cartItemId))
+                : allItems;
+
+            if (selectedItems.length === 0) {
+                alert('주문할 상품을 찾을 수 없습니다. 다시 선택해주세요.');
+                navigate('/cart');
+                return;
+            }
+
+            const selectedTotalAmount = selectedItems.reduce(
+                (sum, item) => sum + (item.totalSalePrice || item.totalPrice || 0),
+                0
+            );
+
             setCartData({
-                items: data.items || [],
-                totalAmount: data.totalSalePrice || data.totalPrice || 0
+                items: selectedItems,
+                totalAmount: selectedTotalAmount
             });
             setLoading(false);
         }).catch(err => {
@@ -30,7 +52,7 @@ const OrderPage = () => {
             alert('장바구니 정보를 불러오는데 실패했습니다.');
             navigate('/cart');
         });
-    }, [navigate]);
+    }, [location.state, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -118,17 +140,17 @@ const OrderPage = () => {
                         <div>
                             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>우편번호</label>
                             <input name="zipCode" value={formData.zipCode} onChange={handleChange} required placeholder="00000"
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
+                                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>기본 주소</label>
                             <input name="baseAddress" value={formData.baseAddress} onChange={handleChange} required placeholder="서울시 강남구..."
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
+                                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>상세 주소</label>
                             <input name="detailAddress" value={formData.detailAddress} onChange={handleChange} required placeholder="101호"
-                                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
+                                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: '#fff', color: 'var(--text-primary)' }} />
                         </div>
                     </div>
 
