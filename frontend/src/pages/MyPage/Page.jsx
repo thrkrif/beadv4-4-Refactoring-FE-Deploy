@@ -231,7 +231,7 @@ const MyPage = () => {
     };
 
     return (
-        <div className="container" style={{ padding: '60px 20px', maxWidth: '1000px' }}>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '1280px' }}>
             {/* Header Area */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '40px' }}>
                 <div>

@@ -135,7 +135,7 @@ const PaymentPage = () => {
     if (!orderInfo) return <div className="container" style={{ padding: '80px 20px', textAlign: 'center' }}>주문 정보를 확인 중...</div>;
 
     return (
-        <div className="container" style={{ padding: '40px 20px', maxWidth: '600px' }}>
+        <div className="container" style={{ padding: '40px 20px', maxWidth: '800px' }}>
             <h1 style={{ marginBottom: '30px', textAlign: 'center' }}>결제하기</h1>
 
             <div className="card" style={{ padding: '0 20px 20px' }}>

@@ -127,7 +127,7 @@ const ProductCreatePage = () => {
     };
 
     return (
-        <div className="container" style={{ padding: '60px 20px', maxWidth: '800px' }}>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '1100px' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-primary)' }}>상품 등록</h1>
                 <p style={{ color: 'var(--text-secondary)' }}>새로운 상품을 등록하여 판매를 시작해보세요.</p>

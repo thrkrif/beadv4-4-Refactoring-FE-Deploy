@@ -79,7 +79,7 @@ const ProductEditPage = () => {
     );
 
     return (
-        <div className="container" style={{ padding: '60px 20px', maxWidth: '800px' }}>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '1100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
                 <button
                     onClick={() => navigate(-1)}

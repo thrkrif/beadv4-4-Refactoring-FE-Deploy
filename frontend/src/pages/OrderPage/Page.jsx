@@ -89,7 +89,7 @@ const OrderPage = () => {
     if (loading) return <div className="container" style={{ padding: '50px', textAlign: 'center' }}>로딩 중...</div>;
 
     return (
-        <div className="container" style={{ padding: '40px 20px', maxWidth: '800px' }}>
+        <div className="container" style={{ padding: '40px 20px', maxWidth: '1100px' }}>
             <h1 style={{ marginBottom: '30px' }}>주문 / 결제</h1>
 
             <div style={{ display: 'grid', gap: '30px' }}>
