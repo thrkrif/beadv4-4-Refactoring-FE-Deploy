@@ -144,7 +144,7 @@ const OrderDetailPage = () => {
 
     return (
         <>
-        <div className="container" style={{ padding: '60px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="container" style={{ padding: '60px 20px', maxWidth: '1280px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
                 <button

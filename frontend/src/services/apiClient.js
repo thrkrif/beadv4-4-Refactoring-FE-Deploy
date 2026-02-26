@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.thock.site';
+// 개발 환경에서는 Vite 프록시 사용 (CORS 우회), 프로덕션에서는 환경변수 사용
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'http://localhost:8080');
 
 class ApiClient {
     constructor() {
@@ -67,7 +68,7 @@ class ApiClient {
             if (import.meta.env.DEV) {
                 console.log(`➡️ API 요청: ${options.method || 'GET'} ${url}`);
                 if (headers['Authorization']) {
-                    console.log(`🔑 Auth Token: ${headers['Authorization']}`);
+                    console.log('🔑 Auth Token attached');
                 } else {
                     console.log('❌ No Auth Token sent');
                 }

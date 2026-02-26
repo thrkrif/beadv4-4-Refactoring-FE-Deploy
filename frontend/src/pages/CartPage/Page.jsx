@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import cartApi from '../../services/api/cartApi';
 import CartItem from './components/CartItem';
 import { AlertCircle } from 'lucide-react';
@@ -11,6 +11,7 @@ const CartPage = () => {
     const [loading, setLoading] = useState(true);
     const [selectedIds, setSelectedIds] = useState([]);
     const { updateCartCount } = useCart();
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadCart();
@@ -34,9 +35,9 @@ const CartPage = () => {
     };
 
     const handleToggleSelect = (cartItemId) => {
-        setSelectedIds(prev => 
-            prev.includes(cartItemId) 
-                ? prev.filter(id => id !== cartItemId) 
+        setSelectedIds(prev =>
+            prev.includes(cartItemId)
+                ? prev.filter(id => id !== cartItemId)
                 : [...prev, cartItemId]
         );
     };
@@ -52,8 +53,13 @@ const CartPage = () => {
     const handleRemoveSelected = () => {
         if (selectedIds.length === 0) return;
         if (!window.confirm(`선택한 ${selectedIds.length}개 상품을 삭제하시겠습니까?`)) return;
-        
-        cartApi.removeCartItems(selectedIds).then(() => {
+
+        const selectedProductIds = basket.items
+            .filter(item => selectedIds.includes(item.cartItemId))
+            .map(item => item.productId);
+        const uniqueProductIds = [...new Set(selectedProductIds)];
+
+        cartApi.removeCartItems(uniqueProductIds).then(() => {
             loadCart();
             updateCartCount();
         }).catch(err => {
@@ -62,8 +68,8 @@ const CartPage = () => {
         });
     };
 
-    const handleRemoveItem = (cartItemId) => {
-        cartApi.removeCartItems([cartItemId]).then(() => {
+    const handleRemoveItem = (productId) => {
+        cartApi.removeCartItems([productId]).then(() => {
             loadCart();
             updateCartCount();
         }).catch(err => {
@@ -81,6 +87,22 @@ const CartPage = () => {
             console.error('Failed to clear cart:', err);
             alert('장바구니 비우기에 실패했습니다.');
         });
+    };
+
+    const selectedItems = basket
+        ? basket.items.filter(item => selectedIds.includes(item.cartItemId))
+        : [];
+    const selectedTotalAmount = selectedItems.reduce(
+        (sum, item) => sum + (item.totalSalePrice || item.totalPrice || 0),
+        0
+    );
+
+    const handleProceedToOrder = () => {
+        if (selectedIds.length === 0) {
+            alert('주문할 상품을 선택해주세요.');
+            return;
+        }
+        navigate('/orders/new', { state: { selectedCartItemIds: selectedIds } });
     };
 
     if (loading) return <div className="container" style={{ padding: '50px', textAlign: 'center' }}>장바구니 로딩 중...</div>;
@@ -106,7 +128,7 @@ const CartPage = () => {
         <div className="container" style={{ padding: '40px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <h1 style={{ fontSize: '2rem' }}>장바구니</h1>
-                <button 
+                <button
                     onClick={handleClearCart}
                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'underline' }}
                 >
@@ -117,19 +139,19 @@ const CartPage = () => {
             {/* Selection Controls */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '0 10px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.95rem' }}>
-                    <input 
-                        type="checkbox" 
+                    <input
+                        type="checkbox"
                         checked={basket.items.length > 0 && selectedIds.length === basket.items.length}
                         onChange={handleToggleAll}
-                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)' }} 
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)' }}
                     />
                     <span>전체 선택 ({selectedIds.length}/{basket.items.length})</span>
                 </label>
-                <button 
+                <button
                     onClick={handleRemoveSelected}
                     disabled={selectedIds.length === 0}
-                    style={{ 
-                        background: 'none', border: '1px solid var(--border-subtle)', 
+                    style={{
+                        background: 'none', border: '1px solid var(--border-subtle)',
                         padding: '6px 15px', borderRadius: '8px', fontSize: '0.85rem',
                         color: selectedIds.length > 0 ? '#FF4081' : 'var(--text-secondary)',
                         cursor: selectedIds.length > 0 ? 'pointer' : 'not-allowed',
@@ -146,12 +168,12 @@ const CartPage = () => {
                 <div style={{ flex: 2, minWidth: '300px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {basket.items.map((item) => (
-                            <CartItem 
-                                key={item.cartItemId} 
-                                item={item} 
+                            <CartItem
+                                key={item.cartItemId}
+                                item={item}
                                 onRemove={handleRemoveItem}
                                 isSelected={selectedIds.includes(item.cartItemId)}
-                                onToggleSelect={handleToggleSelect} 
+                                onToggleSelect={handleToggleSelect}
                             />
                         ))}
                     </div>
@@ -164,7 +186,7 @@ const CartPage = () => {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: 'var(--text-secondary)' }}>
                             <span>상품 금액</span>
-                            <span>{basket.totalAmount.toLocaleString()}원</span>
+                            <span>{selectedTotalAmount.toLocaleString()}원</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '25px', color: 'var(--text-secondary)' }}>
                             <span>배송비</span>
@@ -173,12 +195,17 @@ const CartPage = () => {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', fontSize: '1.2rem', fontWeight: 'bold' }}>
                             <span>총 결제금액</span>
-                            <span style={{ color: 'var(--accent-primary)' }}>{basket.totalAmount.toLocaleString()}원</span>
+                            <span style={{ color: 'var(--accent-primary)' }}>{selectedTotalAmount.toLocaleString()}원</span>
                         </div>
 
-                        <Link to="/orders/new" className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', textAlign: 'center', textDecoration: 'none' }}>
+                        <button
+                            onClick={handleProceedToOrder}
+                            className="btn btn-primary"
+                            disabled={selectedIds.length === 0}
+                            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', textAlign: 'center', textDecoration: 'none', opacity: selectedIds.length > 0 ? 1 : 0.5, cursor: selectedIds.length > 0 ? 'pointer' : 'not-allowed' }}
+                        >
                             주문하기
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
