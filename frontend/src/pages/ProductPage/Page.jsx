@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import productApi from '../../services/api/productApi';
 import reviewApi from '../../services/api/reviewApi';
@@ -13,125 +13,80 @@ const ProductPage = () => {
     // 백엔드는 category 파라미터가 필수이며 Enum (KEYBOARD, SWITCH 등)만 받음. ALL 지원 안 함.
     const category = searchParams.get('category') || 'KEYBOARD';
     const keyword = searchParams.get('keyword');
+    const currentPage = Math.max(0, Number(searchParams.get('page') || 0));
 
     const [products, setProducts] = useState([]);
     const [reviewSummaryMap, setReviewSummaryMap] = useState({});
+    const [totalElements, setTotalElements] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
-    const loadMoreRef = useRef(null);
-    const loadingMoreRef = useRef(false);
+    const [searchInput, setSearchInput] = useState(keyword || '');
     const isSearchMode = Boolean(keyword);
 
-    const fetchProducts = async ({ nextPage = 0, reset = false } = {}) => {
-        if (!reset && loadingMoreRef.current) return;
-
-        if (reset) {
-            setLoading(true);
-            setError(null);
-        } else {
-            loadingMoreRef.current = true;
-            setIsLoadingMore(true);
-        }
-
+    const fetchProducts = async () => {
+        setLoading(true);
+        setError(null);
         try {
-            // Backend currently has no "Get All" endpoint and only supports KEYBOARD.
-            // So for "ALL" category, we fetch "KEYBOARD" products to show something.
             const targetCategory = category === 'ALL' ? 'KEYBOARD' : category;
             const res = isSearchMode
                 ? await productApi.searchProducts(keyword)
-                : await productApi.getProducts(targetCategory, nextPage, PAGE_SIZE);
+                : await productApi.getProducts(targetCategory, currentPage, PAGE_SIZE);
 
-            // searchProducts returns List<ProductListResponse> (array)
-            // getProducts returns Page<ProductListResponse> (object with content array)
             const content = Array.isArray(res) ? res : (res.content || []);
+            setProducts(content);
 
-            const enrichedProducts = await Promise.all(
-                content.map(async (item) => {
-                    try {
-                        const detail = await productApi.getProductDetail(item.id);
-                        return {
-                            ...item,
-                            salePrice: detail?.price ?? item.salePrice ?? item.price
-                        };
-                    } catch (detailError) {
-                        console.error(`failed to fetch product detail: ${item.id}`, detailError);
-                        return item;
-                    }
-                })
-            );
-
-            const productIds = enrichedProducts.map((item) => item.id).filter(Boolean);
-            const summaryMap = await reviewApi.getProductReviewSummaryMap(productIds);
-
-            if (reset) {
-                setProducts(enrichedProducts);
-                setReviewSummaryMap(summaryMap || {});
-            } else {
-                setProducts((prev) => {
-                    const prevIds = new Set(prev.map((item) => String(item.id)));
-                    const appended = enrichedProducts.filter((item) => !prevIds.has(String(item.id)));
-                    return [...prev, ...appended];
-                });
-                setReviewSummaryMap((prev) => ({ ...prev, ...(summaryMap || {}) }));
-            }
+            const productIds = content.map((item) => item.id).filter(Boolean);
+            const summaryMap = productIds.length > 0
+                ? await reviewApi.getProductReviewSummaryMap(productIds)
+                : {};
+            setReviewSummaryMap(summaryMap || {});
 
             if (isSearchMode) {
-                setPage(0);
-                setHasMore(false);
+                setTotalElements(content.length);
+                setTotalPages(1);
             } else {
-                const isLastPage = Boolean(res?.last);
-                const totalPages = Number(res?.totalPages || 0);
-                const fallbackLast = content.length < PAGE_SIZE;
-                const resolvedLast = Number.isFinite(totalPages) && totalPages > 0
-                    ? nextPage + 1 >= totalPages
-                    : (res?.last !== undefined ? isLastPage : fallbackLast);
-                setHasMore(!resolvedLast);
-                setPage(nextPage);
+                const resolvedTotalPages = Math.max(1, Number(res?.totalPages || 1));
+                const resolvedTotalElements = Number.isFinite(Number(res?.totalElements))
+                    ? Number(res.totalElements)
+                    : content.length;
+                setTotalPages(resolvedTotalPages);
+                setTotalElements(resolvedTotalElements);
             }
         } catch (err) {
             console.error(err);
             setError(err);
         } finally {
-            if (reset) {
-                setLoading(false);
-            } else {
-                loadingMoreRef.current = false;
-                setIsLoadingMore(false);
-            }
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        setProducts([]);
-        setReviewSummaryMap({});
-        setPage(0);
-        setHasMore(true);
-        fetchProducts({ nextPage: 0, reset: true });
-    }, [category, keyword]);
+        fetchProducts();
+    }, [category, keyword, currentPage]);
 
     useEffect(() => {
-        if (isSearchMode || !hasMore || loading || isLoadingMore || error) return;
-        const target = loadMoreRef.current;
-        if (!target) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && !loadingMoreRef.current) {
-                    fetchProducts({ nextPage: page + 1, reset: false });
-                }
-            },
-            { root: null, rootMargin: '220px 0px', threshold: 0.01 }
-        );
-
-        observer.observe(target);
-        return () => observer.disconnect();
-    }, [page, hasMore, loading, isLoadingMore, isSearchMode, error]);
+        setSearchInput(keyword || '');
+    }, [keyword]);
 
     const handleCategoryChange = (catId) => {
-        setSearchParams({ category: catId });
+        setSearchParams({ category: catId, page: '0' });
+    };
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        const trimmedKeyword = searchInput.trim();
+        if (!trimmedKeyword) {
+            setSearchParams({ category, page: '0' });
+            return;
+        }
+        setSearchParams({ keyword: trimmedKeyword, page: '0' });
+    };
+
+    const handleMovePage = (nextPage) => {
+        if (nextPage < 0 || nextPage >= totalPages) return;
+        if (isSearchMode) return;
+        setSearchParams({ category, page: String(nextPage) });
     };
 
     return (
@@ -148,7 +103,18 @@ const ProductPage = () => {
                                     category === 'SWITCH' ? '스위치' :
                                         category === 'KEYCAP' ? '키캡' : '액세서리'}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)' }}>총 {products.length}개의 상품</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>총 {totalElements}개의 상품</p>
+                    <form onSubmit={handleSearchSubmit} style={{ marginTop: '12px', display: 'flex', gap: '10px', maxWidth: '520px' }}>
+                        <input
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            placeholder="상품명으로 검색"
+                            style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: '#fff' }}
+                        />
+                        <button type="submit" className="btn btn-primary" style={{ padding: '10px 16px' }}>
+                            검색
+                        </button>
+                    </form>
                 </div>
 
                 {loading ? (
@@ -156,7 +122,7 @@ const ProductPage = () => {
                 ) : error ? (
                     <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-danger)' }}>
                         <p>상품을 불러오는 중 오류가 발생했습니다.</p>
-                        <button onClick={fetchProducts} className="btn btn-primary" style={{ marginTop: '10px' }}>다시 시도</button>
+                        <button onClick={() => fetchProducts()} className="btn btn-primary" style={{ marginTop: '10px' }}>다시 시도</button>
                     </div>
                 ) : (
                     <>
@@ -171,8 +137,26 @@ const ProductPage = () => {
                         </div>
 
                         {!isSearchMode && (
-                            <div ref={loadMoreRef} style={{ padding: '20px 0 10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                {isLoadingMore ? '상품을 더 불러오는 중...' : (hasMore ? '스크롤하면 더 불러옵니다.' : '모든 상품을 불러왔습니다.')}
+                            <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                                <button
+                                    className="btn btn-outline"
+                                    onClick={() => handleMovePage(currentPage - 1)}
+                                    disabled={currentPage <= 0}
+                                    style={{ padding: '8px 12px', opacity: currentPage <= 0 ? 0.5 : 1 }}
+                                >
+                                    이전
+                                </button>
+                                <span style={{ color: 'var(--text-secondary)', minWidth: '80px', textAlign: 'center' }}>
+                                    {currentPage + 1} / {totalPages}
+                                </span>
+                                <button
+                                    className="btn btn-outline"
+                                    onClick={() => handleMovePage(currentPage + 1)}
+                                    disabled={currentPage + 1 >= totalPages}
+                                    style={{ padding: '8px 12px', opacity: currentPage + 1 >= totalPages ? 0.5 : 1 }}
+                                >
+                                    다음
+                                </button>
                             </div>
                         )}
                     </>

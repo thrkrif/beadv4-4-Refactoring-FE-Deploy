@@ -186,7 +186,14 @@ const MyPage = () => {
             PAYMENT_COMPLETED: { bg: '#e3f2fd', color: '#1e88e5', text: '결제완료' },
             PENDING_PAYMENT: { bg: '#fff3e0', color: '#fb8c00', text: '결제대기' },
             CANCELLED: { bg: '#ffebee', color: '#e53935', text: '취소됨' },
-            PREPARING: { bg: '#f3e5f5', color: '#8e24aa', text: '배송준비' }
+            PARTIALLY_CANCELLED: { bg: '#fce4ec', color: '#d81b60', text: '부분취소' },
+            PARTIALLY_REFUNDED: { bg: '#ede7f6', color: '#5e35b1', text: '부분환불완료' },
+            REFUNDED: { bg: '#ede7f6', color: '#4527a0', text: '환불완료' },
+            PREPARING: { bg: '#f3e5f5', color: '#8e24aa', text: '배송준비' },
+            PARTIALLY_SHIPPED: { bg: '#e0f7fa', color: '#00838f', text: '부분배송' },
+            SHIPPING: { bg: '#e1f5fe', color: '#0277bd', text: '배송중' },
+            DELIVERED: { bg: '#e8f5e9', color: '#2e7d32', text: '배송완료' },
+            CONFIRMED: { bg: '#e8f5e9', color: '#1b5e20', text: '구매확정' }
         };
         const style = styles[state] || { bg: '#f5f5f5', color: '#757575', text: state };
         return <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: style.bg, color: style.color }}>{style.text}</span>;
@@ -530,35 +537,35 @@ const MyPage = () => {
                                             <div style={{ overflowX: 'auto' }}>
                                                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
                                                     <thead>
-                                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                            <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>대상월</th>
-                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>건수</th>
-                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>결제금액</th>
-                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>수수료</th>
-                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>정산금액</th>
-                                                            <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>상태</th>
-                                                        </tr>
+                                                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                        <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>대상월</th>
+                                                        <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>건수</th>
+                                                        <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>결제금액</th>
+                                                        <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>수수료</th>
+                                                        <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>정산금액</th>
+                                                        <th style={{ textAlign: 'right', padding: '10px 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>상태</th>
+                                                    </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {monthlySettlements.map((row) => {
-                                                            const statusStyle = settlementStatusStyle(row.status);
-                                                            return (
-                                                                <tr key={row.monthlySettlementId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                                    <td style={{ padding: '14px 0', color: 'var(--text-primary)', fontWeight: 600 }}>
-                                                                        {`${String(row.targetYearMonth).slice(0, 4)}-${String(row.targetYearMonth).slice(4, 6)}`}
-                                                                    </td>
-                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalCount || 0).toLocaleString()}</td>
-                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalPaymentAmount || 0).toLocaleString()}원</td>
-                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalFeeAmount || 0).toLocaleString()}원</td>
-                                                                    <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 700 }}>{(row.totalPayoutAmount || 0).toLocaleString()}원</td>
-                                                                    <td style={{ padding: '14px 0', textAlign: 'right' }}>
+                                                    {monthlySettlements.map((row) => {
+                                                        const statusStyle = settlementStatusStyle(row.status);
+                                                        return (
+                                                            <tr key={row.monthlySettlementId} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                                <td style={{ padding: '14px 0', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                                                    {`${String(row.targetYearMonth).slice(0, 4)}-${String(row.targetYearMonth).slice(4, 6)}`}
+                                                                </td>
+                                                                <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalCount || 0).toLocaleString()}</td>
+                                                                <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalPaymentAmount || 0).toLocaleString()}원</td>
+                                                                <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)' }}>{(row.totalFeeAmount || 0).toLocaleString()}원</td>
+                                                                <td style={{ padding: '14px 0', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 700 }}>{(row.totalPayoutAmount || 0).toLocaleString()}원</td>
+                                                                <td style={{ padding: '14px 0', textAlign: 'right' }}>
                                                                         <span style={{ padding: '5px 11px', borderRadius: '999px', background: statusStyle.bg, color: statusStyle.color, fontSize: '0.75rem', fontWeight: 700 }}>
                                                                             {statusStyle.label}
                                                                         </span>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                     </tbody>
                                                 </table>
                                             </div>
