@@ -24,6 +24,25 @@ const ProductPage = () => {
     const [searchInput, setSearchInput] = useState(keyword || '');
     const isSearchMode = Boolean(keyword);
 
+    const enrichWithSalePrice = async (items) => {
+        const enriched = await Promise.all(
+            (items || []).map(async (item) => {
+                try {
+                    const detail = await productApi.getProductDetail(item.id);
+                    return {
+                        ...item,
+                        originalPrice: item.originalPrice ?? item.price,
+                        salePrice: detail?.price ?? item.salePrice ?? item.price
+                    };
+                } catch (error) {
+                    console.error(`failed to fetch product detail: ${item.id}`, error);
+                    return item;
+                }
+            })
+        );
+        return enriched;
+    };
+
     const fetchProducts = async () => {
         setLoading(true);
         setError(null);
@@ -34,22 +53,23 @@ const ProductPage = () => {
                 : await productApi.getProducts(targetCategory, currentPage, PAGE_SIZE);
 
             const content = Array.isArray(res) ? res : (res.content || []);
-            setProducts(content);
+            const enrichedContent = await enrichWithSalePrice(content);
+            setProducts(enrichedContent);
 
-            const productIds = content.map((item) => item.id).filter(Boolean);
+            const productIds = enrichedContent.map((item) => item.id).filter(Boolean);
             const summaryMap = productIds.length > 0
                 ? await reviewApi.getProductReviewSummaryMap(productIds)
                 : {};
             setReviewSummaryMap(summaryMap || {});
 
             if (isSearchMode) {
-                setTotalElements(content.length);
+                setTotalElements(enrichedContent.length);
                 setTotalPages(1);
             } else {
                 const resolvedTotalPages = Math.max(1, Number(res?.totalPages || 1));
                 const resolvedTotalElements = Number.isFinite(Number(res?.totalElements))
                     ? Number(res.totalElements)
-                    : content.length;
+                    : enrichedContent.length;
                 setTotalPages(resolvedTotalPages);
                 setTotalElements(resolvedTotalElements);
             }
