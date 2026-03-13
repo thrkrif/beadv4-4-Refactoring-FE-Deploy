@@ -19,32 +19,32 @@ const PaymentSuccessPage = () => {
     const hasAmountParam = amount !== null;
     const isWalletPayment = paymentKey === 'INTERNAL_WALLET' || (hasAmountParam && !!orderId && amountNumber <= 0);
     const confirmed = useRef(false);
+    const updateCartCountRef = useRef(updateCartCount);
+
+    useEffect(() => {
+        updateCartCountRef.current = updateCartCount;
+    }, [updateCartCount]);
+
+    const syncCartCountInBackground = async () => {
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            try {
+                await updateCartCountRef.current();
+            } catch (e) {
+                console.warn('cart count sync failed:', e);
+            }
+            if (attempt < 4) await sleep(300);
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
-        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-        const syncCartCount = async () => {
-            // 결제 완료 이벤트 소비 지연을 고려해 짧게 재시도
-            for (let attempt = 0; attempt < 5; attempt += 1) {
-                if (cancelled) return;
-                try {
-                    await updateCartCount();
-                } catch (e) {
-                    // 카운트 동기화 실패는 결제 성공 화면 표시를 막지 않음
-                    console.warn('cart count sync failed:', e);
-                }
-                if (attempt < 4) {
-                    await sleep(300);
-                }
-            }
-        };
 
         const run = async () => {
             if (isWalletPayment) {
                 setResult({ paymentMethod: 'INTERNAL_WALLET' });
                 setLoading(false);
-                void syncCartCount();
+                void syncCartCountInBackground();
                 return;
             }
 
@@ -64,11 +64,28 @@ const PaymentSuccessPage = () => {
                 if (cancelled) return;
                 setResult(res);
                 setLoading(false);
-                void syncCartCount();
-            } catch (err) {
+                void syncCartCountInBackground();
+            } catch (err: any) {
                 if (cancelled) return;
+                const status = err?.response?.status;
+                const code = err?.response?.data?.code;
+                const message = err?.response?.data?.message || err?.message || '';
+
+                // 이미 승인 처리된 주문을 success URL 재진입으로 다시 confirm 호출한 경우
+                // 백엔드가 PAYMENT_NOT_REQUEST(400)를 줄 수 있으므로 UI는 성공으로 처리
+                if (
+                    status === 400 &&
+                    (code === 'PAYMENT-400-9' || String(message).includes('결제 상태가 요청이 아닙니다'))
+                ) {
+                    console.info('Payment already confirmed. Rendering success page.');
+                    setResult({ paymentMethod: 'CARD', alreadyConfirmed: true });
+                    setLoading(false);
+                    void syncCartCountInBackground();
+                    return;
+                }
+
                 console.error('Payment Confirm Error:', err);
-                setError(err.message || '결제 승인 중 오류가 발생했습니다.');
+                setError(message || '결제 승인 중 오류가 발생했습니다.');
                 setLoading(false);
             }
         };
@@ -78,7 +95,7 @@ const PaymentSuccessPage = () => {
         return () => {
             cancelled = true;
         };
-    }, [paymentKey, orderId, amount, isWalletPayment, updateCartCount]);
+    }, [paymentKey, orderId, amount, isWalletPayment]);
 
     if (loading) return <div className="container" style={{ padding: '50px', textAlign: 'center' }}>결제 승인 처리 중...</div>;
 
