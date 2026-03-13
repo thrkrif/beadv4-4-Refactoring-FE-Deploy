@@ -28,7 +28,12 @@ const PaymentSuccessPage = () => {
             // 결제 완료 이벤트 소비 지연을 고려해 짧게 재시도
             for (let attempt = 0; attempt < 5; attempt += 1) {
                 if (cancelled) return;
-                await updateCartCount();
+                try {
+                    await updateCartCount();
+                } catch (e) {
+                    // 카운트 동기화 실패는 결제 성공 화면 표시를 막지 않음
+                    console.warn('cart count sync failed:', e);
+                }
                 if (attempt < 4) {
                     await sleep(300);
                 }
@@ -37,10 +42,9 @@ const PaymentSuccessPage = () => {
 
         const run = async () => {
             if (isWalletPayment) {
-                await syncCartCount();
-                if (cancelled) return;
                 setResult({ paymentMethod: 'INTERNAL_WALLET' });
                 setLoading(false);
+                void syncCartCount();
                 return;
             }
 
@@ -57,10 +61,10 @@ const PaymentSuccessPage = () => {
 
             try {
                 const res = await paymentApi.confirmToss(paymentKey, orderId, amount);
-                await syncCartCount();
                 if (cancelled) return;
                 setResult(res);
                 setLoading(false);
+                void syncCartCount();
             } catch (err) {
                 if (cancelled) return;
                 console.error('Payment Confirm Error:', err);

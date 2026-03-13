@@ -5,11 +5,22 @@ const paymentApi = {
     // POST /api/v1/payments/confirm/toss
     confirmToss: async (paymentKey, orderId, amount) => {
         console.log('🚀 토스 결제 승인 API 호출:', { paymentKey, orderId, amount: Number(amount) });
-        return apiClient.post('/api/v1/payments/confirm/toss', {
-            paymentKey,
-            orderId,
-            amount: Number(amount)
-        });
+        return apiClient.requestWithTimeout(
+            '/api/v1/payments/confirm/toss',
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    paymentKey,
+                    orderId,
+                    amount: Number(amount)
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                isCritical: true
+            },
+            15000
+        );
     },
 
     // 내 지갑 정보 조회 (외부 API)
